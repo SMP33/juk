@@ -2,9 +2,10 @@
 #include <dji_vehicle.hpp>
 #include "common/dji_linux_helpers.hpp"
 
-#include "juk_msg/juk_dji_gps_msg.h"
-#include "juk_msg/juk_dji_device_status_msg.h"
-#include "juk_msg/juk_control_dji_msg.h"
+#include <juk_msg/juk_dji_gps_msg.h>
+#include <juk_msg/juk_dji_device_status_msg.h>
+#include <juk_msg/juk_control_dji_msg.h>
+#include <juk_msg/juk_dji_camera_control_msg.h>
 
 #include <iostream>
 #include <fstream>
@@ -14,7 +15,7 @@
 #include <GeoMath.h>
 #include <cstdlib>
 
-
+#include "gimbal/dji_gimbal.h"
 
 
 //#define DEBUG_ROS
@@ -46,7 +47,19 @@ juk_msg::juk_dji_device_status_msg msg_device_status;
 ros::Time last_ctrl_update_time;
 
 uint8_t ctrl_flag = juk_msg::juk_control_dji_msg::flag_break;
+RotationAngle iAngle, nAngle, cAngle;
 
+
+int gimbal_motion_time = 20;
+
+common_things::Time t;
+
+struct
+{
+	float yaw;
+	float pitch;
+	float roll;
+} initAngle,needAngle,currentAngle;
 
 #ifdef NO_DJI_HARDWARE
 
@@ -58,6 +71,19 @@ GeoMath::v3 vel( 2 / (double)freq,0,0);
 const int freq = 20;
 #endif // NO_DJI_HARDWARE
 
+int calc_gimbal_speed(int current, int need)
+{
+	int speed = 800;
+	int break_dist = 300;
+	int dist = need - current;
+	if (abs(dist) < 30) return 0;
+	
+	if (abs(dist) < break_dist) speed = speed / 2;
+	if (abs(dist) < break_dist / 2) speed = speed / 3;
+	
+	if (dist > 0) return speed;
+	return -speed;
+}
 
 void ctrl_callback(const juk_msg::juk_control_dji_msg::ConstPtr& msg)
 {
@@ -67,6 +93,39 @@ void ctrl_callback(const juk_msg::juk_control_dji_msg::ConstPtr& msg)
 	current_ctrlData.z = msg->data_z;
 	current_ctrlData.yaw = msg->course;	
 	ctrl_flag = msg->flag;
+}
+
+void gimbal_camera_callback(const juk_msg::juk_dji_camera_control_msg::ConstPtr& msg)
+{
+	DJI::OSDK::Gimbal::AngleData angleData;
+	angleData.mode = 1;
+	angleData.yaw = msg->yaw;
+	angleData.pitch= msg->pitch;
+	angleData.roll = msg->roll;
+	angleData.duration = 3;
+	
+	switch (msg->action)
+	{
+	case juk_msg::juk_dji_camera_control_msg::take_photo:
+		v->camera->shootPhoto();
+		break;
+	case juk_msg::juk_dji_camera_control_msg::start_video:
+		v->camera->videoStart();
+		break;
+	case juk_msg::juk_dji_camera_control_msg::stop_video:
+		v->camera->videoStop();
+		break;
+	}
+	
+//	cout << "~~~~~~~~~~~~~~~~~~~~~~ ";
+//	cout << nAngle.yaw << " " << nAngle.pitch << " " << nAngle.roll << endl;
+	
+	nAngle.yaw = msg->yaw;
+	nAngle.pitch = msg->pitch;
+	nAngle.roll = msg->roll;
+
+	
+	
 }
 
 void update_data()
@@ -104,6 +163,9 @@ void update_data()
 	msg_GPS.vy = data_Velocity.data.y;
 	msg_GPS.vz = data_Velocity.data.z;
 	msg_GPS.course = data_Course;
+	
+
+	
 	
 	#else 
 	msg_GPS.vx = vel.x / 6370000.0;
@@ -154,8 +216,29 @@ void update_data()
 				else				
 				v->control->flightCtrl(current_ctrlData);
 			}
-			
-								
+							
+			auto gibmal = v->broadcast->getGimbal();
+			gibmal = v->broadcast->getGimbal();
+		
+			cAngle.roll  = gibmal.roll * 10 - iAngle.roll;
+			cAngle.pitch = gibmal.pitch * 10 - iAngle.pitch;
+			cAngle.yaw   = gibmal.yaw * 10 - iAngle.yaw;
+		
+			DJI::OSDK::Gimbal::SpeedData gimbalSpeed;
+		
+			gimbalSpeed.roll  = calc_gimbal_speed(cAngle.roll, nAngle.roll);
+			gimbalSpeed.pitch = calc_gimbal_speed(cAngle.pitch, nAngle.pitch);
+			gimbalSpeed.yaw   = calc_gimbal_speed(cAngle.yaw, nAngle.yaw);
+			gimbalSpeed.gimbal_control_authority = 1;
+			gimbalSpeed.disable_fov_zoom = 0;
+			gimbalSpeed.ignore_user_stick = 0;
+			gimbalSpeed.extend_control_range = 0;
+			gimbalSpeed.ignore_aircraft_motion = 0;
+			gimbalSpeed.yaw_return_neutral = 0;
+			gimbalSpeed.reserved0 = 0;
+			gimbalSpeed.reserved1 = 0;
+		
+			v->gimbal->setSpeed(&gimbalSpeed);
 			 
 			#endif
 			msg_device_status.authority = juk_msg::juk_dji_device_status_msg::CONTROL_BY_SDK;
@@ -207,11 +290,12 @@ int main(int argc, char *argv[])
 	ros::Publisher pub_device_status = nh.advertise<juk_msg::juk_dji_device_status_msg>("JUK/DJI/DEVICE_STATUS", 1);
 	
 	ros::Subscriber sub = nh.subscribe("JUK/CONTROL_DJI", 1, ctrl_callback);
+	ros::Subscriber sub_camera = nh.subscribe("JUK/DJI_GIMBAL", 1, gimbal_camera_callback);
 	
 #ifndef NO_DJI_HARDWARE
 	LinuxSetup ls(argc, argv); 
 	v = ls.getVehicle();
-	
+
 	auto st=v->broadcast->getStatus();
 
 	//===============Подписка на указанные темы==========//
@@ -242,8 +326,21 @@ int main(int argc, char *argv[])
 #endif 
 	//==========Основной цикл==========//
 	ros::Rate r(freq);
-
 	
+	
+	
+
+	auto gibmal = v->broadcast->getGimbal();
+	
+	iAngle.roll  = gibmal.roll * 10;
+	iAngle.pitch = gibmal.pitch * 10;
+	iAngle.yaw   = gibmal.yaw * 10;
+	
+	nAngle.yaw = 0;
+	nAngle.pitch = 0;
+	nAngle.roll = 0;
+	
+
 	while (ros::ok())
 	{
 		update_data();

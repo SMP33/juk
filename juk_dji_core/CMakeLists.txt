@@ -18,7 +18,7 @@ include_directories(${LinuxChrono_INCLUDE_DIRS})
 find_package(GeoMath REQUIRED)
 include_directories(${GeoMath_INCLUDE_DIRS})
 
-add_executable(juk-dji-core common/dji_linux_environment.cpp  common/dji_linux_helpers.cpp juk-dji-core.cpp)
+add_executable(juk-dji-core common/dji_linux_environment.cpp  common/dji_linux_helpers.cpp gimbal/dji_gimbal.cpp juk-dji-core.cpp)
 
 find_package(juk_msg REQUIRED)
 include_directories( ${juk_msg_INCLUDE_DIRS})
