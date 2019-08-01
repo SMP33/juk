@@ -28,6 +28,7 @@
       </FileMasks>
       <TransferNewFilesOnly>true</TransferNewFilesOnly>
       <IncludeSubdirectories>true</IncludeSubdirectories>
+      <SelectedDirectories />
       <DeleteDisappearedFiles>true</DeleteDisappearedFiles>
       <ApplyGlobalExclusionList>true</ApplyGlobalExclusionList>
       <Extension>
@@ -52,7 +53,7 @@
     </ToolchainID>
     <RelativeSourceDirectory />
     <ConfigurationType>DEBUG</ConfigurationType>
-    <BinaryDirectory>VisualGDB/$(ConfigurationName)</BinaryDirectory>
+    <BinaryDirectory>$(BuildDir)/build/bin</BinaryDirectory>
     <MakeCommandTemplate>
       <SkipWhenRunningCommandList>false</SkipWhenRunningCommandList>
       <RemoteHost>
@@ -61,11 +62,7 @@
       </RemoteHost>
       <Command>$(ToolchainMake)</Command>
       <Arguments>$(ToolchainMakeArgs)</Arguments>
-      <WorkingDirectory>$(BuildDir)</WorkingDirectory>
-      <Environment>
-        <Records />
-        <EnvironmentSetupFiles />
-      </Environment>
+      <WorkingDirectory>/home/ubuntu/juk/build</WorkingDirectory>
       <BackgroundMode xsi:nil="true" />
     </MakeCommandTemplate>
     <CMakeCommand>
@@ -75,10 +72,7 @@
         <Transport>BuiltinShortcut</Transport>
       </RemoteHost>
       <Command>cmake</Command>
-      <Environment>
-        <Records />
-        <EnvironmentSetupFiles />
-      </Environment>
+      <WorkingDirectory>$(BuildDir)/build</WorkingDirectory>
       <BackgroundMode xsi:nil="true" />
     </CMakeCommand>
     <UpdateSourcesInCMakeFile>false</UpdateSourcesInCMakeFile>
