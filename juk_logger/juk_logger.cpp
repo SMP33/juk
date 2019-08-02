@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 		reach.add_str("lat", reach.data.lat);
 		reach.add_str("lng", reach.data.lng);
 		reach.add_str("alt", reach.data.alt);
-		reach.add_str("quality", reach.data.quality);
+		reach.add_str("quality", int(reach.data.quality));
 		reach.add_str("data_Y", reach.data.time_Y);
 		reach.add_str("data_M", reach.data.time_M);
 		reach.add_str("data_D", reach.data.time_D);
