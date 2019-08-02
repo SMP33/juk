@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 		device_status.add_str("voltage", device_status.data.voltage);
 		
 		control_dji.reset_str();
-		control_dji.add_str("flag", control_dji.data.flag);
+		control_dji.add_str("flag", int(control_dji.data.flag));
 		control_dji.add_str("data_x", control_dji.data.data_x);
 		control_dji.add_str("data_y", control_dji.data.data_y);
 		control_dji.add_str("data_z", control_dji.data.data_z);

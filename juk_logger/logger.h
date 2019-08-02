@@ -36,7 +36,7 @@ template<typename T>
 		
 		std::string get_full_str()
 		{
-			return full_str.str();
+			return full_str.str()+"\n";
 		}
 		void reset_str()
 		{
@@ -44,7 +44,7 @@ template<typename T>
 			full_str.flags(std::ios::fixed);
 			full_str.precision(10);
 			full_str << "@TOPIC:[" << topic_name <<"]"<< std::endl;
-			full_str << "UPD:[" << (upd ? "YES" : "NO") << std::endl; 
+			full_str << "\tUPD:[" << (upd ? "YES" : "NO") << "]" <<std::endl; 
 			full_str << "\tLAST_UPD:[" << (last_upd_time - start_time) << "]" << std::endl;
 		}
 		template<typename V>
