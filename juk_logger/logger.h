@@ -46,6 +46,7 @@ template<typename T>
 			full_str << "@TOPIC:[" << topic_name <<"]"<< std::endl;
 			full_str << "\tUPD:[" << (upd ? "YES" : "NO") << "]" <<std::endl; 
 			full_str << "\tLAST_UPD:[" << (last_upd_time - start_time) << "]" << std::endl;
+			full_str << std::endl;
 		}
 		template<typename V>
 			void add_str(std::string txt, V value)
