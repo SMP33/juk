@@ -2,96 +2,85 @@
 
 #include "logger.h"
 
+#include <juk_msg/juk_dji_gps_msg.h>
+#include <juk_msg/juk_dji_device_status_msg.h>
+#include <juk_msg/juk_control_dji_msg.h>
+#include <juk_msg/juk_position_data_msg.h>
+#include <juk_msg/juk_set_target_data_msg.h>
+
+#define pr(x,y) <<  x <<": "<<y<<endl
+
 using namespace std;
-
-#define ss <<" "<<
-#define ss_(x)  << x <<
-
-ros::Time start_time;
-
-LoggerJuk<juk_msg::juk_dji_gps_msg> gps_logger;
-
-ros::Subscriber sub_dji_gps;
-ros::Subscriber sub_dji_device_status;
-ros::Subscriber sub_control_dji;
-
-ros::Time dji_gps_time;
-ros::Time dji_device_status_time;
-ros::Time control_dji_time;
-
-juk_msg::juk_dji_gps_msg juk_dji_gps_data;
-juk_msg::juk_dji_device_status_msg  juk_dji_device_status_data;
-juk_msg::juk_control_dji_msg juk_control_dji_data;
-
-void callback_dji_gps(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
-{
-	juk_dji_gps_data = *input;
-	gps_logger.data = *input;
-	dji_gps_time = ros::Time::now();
-	gps_logger.upd_time = ros::Time::now();
-}
-
-void callback_dji_device_status(const juk_msg::juk_dji_device_status_msg::ConstPtr& input)
-{
-	juk_dji_device_status_data = *input;
-	dji_device_status_time = ros::Time::now();
-}
-
-void callback_control_dji(const juk_msg::juk_control_dji_msg::ConstPtr& input)
-{
-	juk_control_dji_data = *input;
-	control_dji_time  = ros::Time::now();
-}
-
-void log()
-{
-	auto now = ros::Time::now();
-	stringstream result;
-	string h1 = "\n* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *\n";
-	
-	stringstream juk_dji_gps_str; 
-	juk_dji_gps_str.precision(8);
-	juk_dji_gps_str << "JUK_DJI_GPS\n" 
-		ss_("last upd:") dji_gps_time
-		ss_("\nlat:") juk_dji_gps_data.lat ss_("; lng:") juk_dji_gps_data.lng ss_("; alt:") juk_dji_gps_data.alt ss_("; vx:") juk_dji_gps_data.vx ss_("; vy:") juk_dji_gps_data.vy ss_("; vz:") juk_dji_gps_data.vz ss_("; course:") juk_dji_gps_data.course ss_("; Q:") juk_dji_gps_data.quality << endl;
-	stringstream juk_dji_device_status_str;
-	stringstream juk_control_dji_str;
-	
-	juk_control_dji_str << "JUK_CONTROL_DJI\n" 
-		ss_("last upd:") control_dji_time
-		ss_("\nflag:") juk_control_dji_data.flag ss_("; x:") juk_control_dji_data.data_x ss_("; y:") juk_control_dji_data.data_y ss_("; z:") juk_control_dji_data.data_z ss_("; course:") juk_control_dji_data.course << endl;
-	
-	result << h1 << "START TIME:" ss start_time ss "TIME:" ss now <<endl << juk_dji_gps_str.str() << juk_control_dji_str.str();
-	
-	cout << result.str();
-	
-}
 
 int main(int argc, char *argv[])
 {
 	
-	
 	ros::init(argc, argv, "JUK_LOGGER");
-	ros::NodeHandle nh; 
+	ros::NodeHandle nh; 	
 	
-	//sub_dji_gps = nh.subscribe("JUK/DJI/GPS", 1,callback_dji_gps);
-	//sub_dji_device_status = nh.subscribe("JUK/DJI/DEVICE_STATUS", 1, callback_dji_device_status);
-	//sub_control_dji = nh.subscribe("JUK/CONTROL_DJI", 1, callback_control_dji);
+	ros::Rate r(1);
+	ros::Time st = ros::Time::now();
+	cout << st << endl;
 	
-	start_time = ros::Time::now();
+	SimpleSub<juk_msg::juk_dji_gps_msg> gps(&nh, "JUK/DJI/GPS");
+	SimpleSub<juk_msg::juk_dji_device_status_msg> device_status(&nh, "JUK/DJI/DEVICE_STATUS");
 	
+	SimpleSub<juk_msg::juk_control_dji_msg> control_dji(&nh, "JUK/CONTROL_DJI");
+	SimpleSub<juk_msg::juk_position_data_msg> position_data(&nh, "JUK/POSITION_DATA");
 	
-	//gps_logger.sub = nh.subscribe("JUK/DJI/GPS", 1, callback_dji_gps);
+	SimpleSub<juk_msg::juk_set_target_data_msg> target(&nh, "JUK/TARGET");
 	
-	ros::Rate r(5);
-	
-	JukLogger<juk_msg::juk_dji_gps_msg> gps_log(&nh, "JUK/DJI/GPS");
 	while (ros::ok())
 	{
-		cout << gps_log.data.lat << endl;
-		cout << "123" << endl;
-		//cout << gps_logger.data.lat << endl;
-		//log();
+		stringstream str;
+		ros::Time ct = ros::Time::now();
+		
+		gps.reset_str();
+		gps.add_str("lat", gps.data.lat);
+		gps.add_str("lng", gps.data.lng);
+		gps.add_str("alt", gps.data.alt);
+		gps.add_str("vx", gps.data.vx);
+		gps.add_str("vy", gps.data.vy);
+		gps.add_str("vz", gps.data.vz);
+		gps.add_str("course", gps.data.course);
+		gps.add_str("sats", int(gps.data.satellites));
+		gps.add_str("quality", gps.data.quality);
+		
+		device_status.reset_str();
+		device_status.add_str("authority", int(device_status.data.authority));
+		device_status.add_str("voltage", device_status.data.voltage);
+		
+		control_dji.reset_str();
+		control_dji.add_str("flag", control_dji.data.flag);
+		control_dji.add_str("data_x", control_dji.data.data_x);
+		control_dji.add_str("data_y", control_dji.data.data_y);
+		control_dji.add_str("data_z", control_dji.data.data_z);
+		control_dji.add_str("course", control_dji.data.course);
+		
+		position_data.reset_str();
+		position_data.add_str("lat", position_data.data.lat);
+		position_data.add_str("lng", position_data.data.lng);
+		position_data.add_str("alt", position_data.data.alt);
+		position_data.add_str("x", position_data.data.x);
+		position_data.add_str("y", position_data.data.y);
+		position_data.add_str("z", position_data.data.z);
+		position_data.add_str("course", position_data.data.course);
+		position_data.add_str("dist_to_target", position_data.data.dist_to_target);
+		position_data.add_str("stable_time", position_data.data.stable_time);
+		
+		str.flags(std::ios::fixed);
+		str.precision(10);
+		
+		str << "~ ~ ~ ~ ~"  << endl;
+		str << "START:[" << st << "]" << endl;
+		str << "NOW:[" << ct << "]" << endl;
+		
+		str << gps.get_full_str();
+		str << device_status.get_full_str();
+		str << position_data.get_full_str();
+		
+		
+		cout << str.str();
 		ros::spinOnce();
 		r.sleep();
 	}

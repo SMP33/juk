@@ -39,6 +39,10 @@ private:
 		float accurancy;
 	}target;
 	
+	bool stable_now;
+	bool stable_last;
+	ros::Time stable_start;
+	
 	ros::NodeHandle nh;
 	ros::Publisher pub_dji_control;
 	ros::Publisher pub_position_data;
@@ -62,10 +66,13 @@ NavigationNode::NavigationNode()
 	pub_str = nh.advertise<std_msgs::String>("JUK/STR", 1);
 	
 	target.cruising_speed = 3;
+	target.accurancy = 0.3;
 	ctrl_mode = juk_msg::juk_set_target_data_msg::mode_allow_break_distance;
 
 	sub_dji_gps = nh.subscribe("JUK/DJI/GPS", 1, &NavigationNode::gps_callback, this);
 	sub_set_target = nh.subscribe("JUK/TARGET", 1, &NavigationNode::set_target_callback, this);
+	stable_now = false;
+	stable_last = false;
 }
 
 void
@@ -123,6 +130,23 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 	position_data.course = input->course;
 	position_data.dist_to_target = (current_point_abs - target.point_abs).length_xyz();
 	
+	
+	stable_now = (position_data.dist_to_target <= target.accurancy);
+	
+	if (stable_now)
+	{
+		if (!stable_last)
+		{
+			stable_start = ros::Time::now();
+		}
+		position_data.stable_time = (ros::Time::now() - stable_start).sec;
+	}
+	else
+	{
+		position_data.stable_time = 0;
+	}
+	
+	stable_last = stable_now;
 	pub_dji_control.publish(output_dji);
 	pub_position_data.publish(position_data);
 }
