@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 		gps.add_str("vz", gps.data.vz);
 		gps.add_str("course", gps.data.course);
 		gps.add_str("sats", int(gps.data.satellites));
-		gps.add_str("quality", gps.data.quality);
+		gps.add_str("quality", int(gps.data.quality));
 		
 		device_status.reset_str();
 		device_status.add_str("authority", int(device_status.data.authority));
@@ -71,11 +71,16 @@ int main(int argc, char *argv[])
 		str.precision(10);
 		
 		str << "~ ~ ~ ~ ~"  << endl;
-		str << "TIME:[" << (ros::Time::now() - start_time).nsec << "]" << endl;
+		str << "TIME:[" << (ros::Time::now() - start_time) << "]" << endl;
 		
 		str << gps.get_full_str();
+		gps.clean_upd();
 		str << device_status.get_full_str();
+		device_status.clean_upd();
 		str << position_data.get_full_str();
+		position_data.clean_upd();
+		str << control_dji.get_full_str();
+		control_dji.clean_upd();
 		
 		
 		cout << str.str();

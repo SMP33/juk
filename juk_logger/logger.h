@@ -12,7 +12,8 @@ template<typename T>
 		SimpleSub(ros::NodeHandle* nh, std::string topic_name_, ros::Time start_time_)
 			:
 			topic_name(topic_name_),
-			start_time(start_time_)
+			start_time(start_time_),
+			upd(false)
 		{
 			sub = nh->subscribe(topic_name, 1, &SimpleSub::callback, this);
 			last_upd_time = ros::Time::now();
@@ -20,8 +21,15 @@ template<typename T>
 		
 		std::string topic_name;
 		T data;
+		
 		ros::Time last_upd_time;
 		ros::Time start_time;
+		bool upd;
+		void clean_upd()
+		{
+			upd = false;
+		}
+		
 		ros::Subscriber sub;
 		
 		std::stringstream full_str;
@@ -36,6 +44,7 @@ template<typename T>
 			full_str.flags(std::ios::fixed);
 			full_str.precision(10);
 			full_str << "@TOPIC:[" << topic_name <<"]"<< std::endl;
+			full_str << ("UPD:[" << upd ? "YES" : "NO") << std::endl; 
 			full_str << "\tLAST_UPD:[" << (last_upd_time - start_time) << "]" << std::endl;
 		}
 		template<typename V>
@@ -48,5 +57,6 @@ template<typename T>
 		{
 			data = *inp;
 			last_upd_time = ros::Time::now();
+			upd = true;
 		}
 	};
