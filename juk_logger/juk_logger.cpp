@@ -7,6 +7,7 @@
 #include <juk_msg/juk_control_dji_msg.h>
 #include <juk_msg/juk_position_data_msg.h>
 #include <juk_msg/juk_set_target_data_msg.h>
+#include <juk_msg/reach_msg.h>
 
 #define pr(x,y) <<  x <<": "<<y<<endl
 
@@ -22,13 +23,16 @@ int main(int argc, char *argv[])
 	ros::Time start_time = ros::Time::now();
 	cout << start_time << endl;
 	
-	SimpleSub<juk_msg::juk_dji_gps_msg> gps(&nh, "JUK/DJI/GPS",start_time);
-	SimpleSub<juk_msg::juk_dji_device_status_msg> device_status(&nh, "JUK/DJI/DEVICE_STATUS",start_time);
+	SimpleSub<juk_msg::juk_dji_gps_msg> gps(&nh, "JUK/DJI/GPS", start_time);
+	SimpleSub<juk_msg::juk_dji_device_status_msg> device_status(&nh, "JUK/DJI/DEVICE_STATUS", start_time);
 	
 	SimpleSub<juk_msg::juk_control_dji_msg> control_dji(&nh, "JUK/CONTROL_DJI", start_time);
 	SimpleSub<juk_msg::juk_position_data_msg> position_data(&nh, "JUK/POSITION_DATA", start_time);
 	
 	SimpleSub<juk_msg::juk_set_target_data_msg> target(&nh, "JUK/TARGET", start_time);
+	
+	SimpleSub<juk_msg::reach_msg> reach(&nh, "REACH_EMLID_DATA", start_time);
+	
 	
 	while (ros::ok())
 	{
@@ -67,6 +71,18 @@ int main(int argc, char *argv[])
 		position_data.add_str("dist_to_target", position_data.data.dist_to_target);
 		position_data.add_str("stable_time", position_data.data.stable_time);
 		
+		reach.reset_str();
+		reach.add_str("lat", reach.data.lat);
+		reach.add_str("lng", reach.data.lng);
+		reach.add_str("alt", reach.data.alt);
+		reach.add_str("quality", reach.data.quality);
+		reach.add_str("data_Y", reach.data.time_Y);
+		reach.add_str("data_M", reach.data.time_M);
+		reach.add_str("data_D", reach.data.time_D);
+		reach.add_str("time_h", reach.data.time_h);
+		reach.add_str("time_m", reach.data.time_m);
+		reach.add_str("time_s", reach.data.time_s);
+		
 		str.flags(std::ios::fixed);
 		str.precision(10);
 		
@@ -75,15 +91,21 @@ int main(int argc, char *argv[])
 		
 		str << gps.get_full_str();
 		gps.clean_upd();
+		
 		str << device_status.get_full_str();
 		device_status.clean_upd();
+		
 		str << position_data.get_full_str();
 		position_data.clean_upd();
+		
 		str << control_dji.get_full_str();
 		control_dji.clean_upd();
 		
+		str << reach.get_full_str();
+		reach.clean_upd();
 		
 		cout << str.str();
+		
 		ros::spinOnce();
 		r.sleep();
 	}
