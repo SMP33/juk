@@ -15,12 +15,12 @@ template<typename T>
 			start_time(start_time_)
 		{
 			sub = nh->subscribe(topic_name, 1, &SimpleSub::callback, this);
-			upd_time = ros::Time::now();
+			last_upd_time = ros::Time::now();
 		}
 		
 		std::string topic_name;
 		T data;
-		ros::Time upd_time;
+		ros::Time last_upd_time;
 		ros::Time start_time;
 		ros::Subscriber sub;
 		
@@ -36,7 +36,7 @@ template<typename T>
 			full_str.flags(std::ios::fixed);
 			full_str.precision(10);
 			full_str << "@TOPIC:[" << topic_name <<"]"<< std::endl;
-			full_str << "\tLAST_UPD:[" << upd_time << "]" << std::endl;
+			full_str << "\tLAST_UPD:[" << (last_upd_time - start_time) << "]" << std::endl;
 		}
 		template<typename V>
 			void add_str(std::string txt, V value)
@@ -47,6 +47,6 @@ template<typename T>
 		void callback(const typename T::ConstPtr& inp)
 		{
 			data = *inp;
-			upd_time = ros::Time::now();
+			last_upd_time = ros::Time::now();
 		}
 	};

@@ -19,21 +19,20 @@ int main(int argc, char *argv[])
 	ros::NodeHandle nh; 	
 	
 	ros::Rate r(1);
-	ros::Time st = ros::Time::now();
-	cout << st << endl;
+	ros::Time start_time = ros::Time::now();
+	cout << start_time << endl;
 	
-	SimpleSub<juk_msg::juk_dji_gps_msg> gps(&nh, "JUK/DJI/GPS");
-	SimpleSub<juk_msg::juk_dji_device_status_msg> device_status(&nh, "JUK/DJI/DEVICE_STATUS");
+	SimpleSub<juk_msg::juk_dji_gps_msg> gps(&nh, "JUK/DJI/GPS",start_time);
+	SimpleSub<juk_msg::juk_dji_device_status_msg> device_status(&nh, "JUK/DJI/DEVICE_STATUS",start_time);
 	
-	SimpleSub<juk_msg::juk_control_dji_msg> control_dji(&nh, "JUK/CONTROL_DJI");
-	SimpleSub<juk_msg::juk_position_data_msg> position_data(&nh, "JUK/POSITION_DATA");
+	SimpleSub<juk_msg::juk_control_dji_msg> control_dji(&nh, "JUK/CONTROL_DJI", start_time);
+	SimpleSub<juk_msg::juk_position_data_msg> position_data(&nh, "JUK/POSITION_DATA", start_time);
 	
-	SimpleSub<juk_msg::juk_set_target_data_msg> target(&nh, "JUK/TARGET");
+	SimpleSub<juk_msg::juk_set_target_data_msg> target(&nh, "JUK/TARGET", start_time);
 	
 	while (ros::ok())
 	{
 		stringstream str;
-		ros::Time ct = ros::Time::now();
 		
 		gps.reset_str();
 		gps.add_str("lat", gps.data.lat);
@@ -72,8 +71,7 @@ int main(int argc, char *argv[])
 		str.precision(10);
 		
 		str << "~ ~ ~ ~ ~"  << endl;
-		str << "START:[" << st << "]" << endl;
-		str << "NOW:[" << ct << "]" << endl;
+		str << "TIME:[" << (ros::Time::now() - start_time).nsec << "]" << endl;
 		
 		str << gps.get_full_str();
 		str << device_status.get_full_str();
