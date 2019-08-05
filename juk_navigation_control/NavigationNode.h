@@ -37,6 +37,7 @@ private:
 		uint8_t break_mode;
 		float cruising_speed;
 		float accurancy;
+		float course;
 	}target;
 	
 	bool stable_now;
@@ -67,6 +68,7 @@ NavigationNode::NavigationNode()
 	
 	target.cruising_speed = 3;
 	target.accurancy = 0.3;
+	target.course = 0;
 	ctrl_mode = juk_msg::juk_set_target_data_msg::mode_allow_break_distance;
 
 	sub_dji_gps = nh.subscribe("JUK/DJI/GPS", 1, &NavigationNode::gps_callback, this);
@@ -84,6 +86,7 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 	auto now = ros::Time::now();
 	if (set_homepoint_flag&&(now - node_start_time).toNSec() > 5000000000)
 	{
+		target.course = input->course;
 		homepoint = GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
 		target.point_abs = homepoint;
 		
