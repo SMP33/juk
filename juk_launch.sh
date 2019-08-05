@@ -22,13 +22,15 @@ echo ""
 
 C1="./$path/juk_navigation_control" 
 $C1 & 
-
 P1=$!
 
 C2="./$path/juk-dji-core" 
 $C2 & 
-
 P2=$!
 
-wait $P1 $P2
+C3="./$path/juk_logger" 
+$C3 & 
+P3=$!
+
+wait $P1 $P2 $P3
 
