@@ -2,7 +2,7 @@
 #Note: VisualGDB will automatically update this file when you add new sources to the project.
 
 cmake_minimum_required(VERSION 2.7)
-project(juk-dji-core)
+project(juk_dji_core)
 set(LIBRARIES_FROM_REFERENCES "")
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/../bin)
 
@@ -18,10 +18,10 @@ include_directories(${LinuxChrono_INCLUDE_DIRS})
 find_package(GeoMath REQUIRED)
 include_directories(${GeoMath_INCLUDE_DIRS})
 
-add_executable(juk-dji-core common/dji_linux_environment.cpp  common/dji_linux_helpers.cpp gimbal/dji_gimbal.cpp juk-dji-core.cpp)
+add_executable(juk_dji_core common/dji_linux_environment.cpp  common/dji_linux_helpers.cpp gimbal/dji_gimbal.cpp juk_dji_core.cpp)
 
 find_package(juk_msg REQUIRED)
 include_directories( ${juk_msg_INCLUDE_DIRS})
 
-target_link_libraries(juk-dji-core ${roscpp_LIBRARIES} ${DJIOSDK_LIBRARIES}  ${LinuxChrono_LIBS} /usr/local/lib/libGeoMath_lib.a "${LIBRARIES_FROM_REFERENCES}")
+target_link_libraries(juk_dji_core ${roscpp_LIBRARIES} ${DJIOSDK_LIBRARIES}  ${LinuxChrono_LIBS} /usr/local/lib/libGeoMath_lib.a "${LIBRARIES_FROM_REFERENCES}")
  
