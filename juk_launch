@@ -27,9 +27,9 @@ C2="$path/juk_dji_core"
 $C2 & 
 P2=$!
 
-C3="$path/juk_logger" 
-$C3 & 
-P3=$!
+#C3="$path/juk_logger" 
+#$C3 & 
+#P3=$!
 
 wait $P1 $P2 $P3
 

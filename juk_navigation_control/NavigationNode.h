@@ -205,7 +205,7 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 	if (velocity_need.z > max_z_speed)
 		velocity_need = velocity_need * (max_z_speed / velocity_need.z);
 
-	//std::cout << "TARGET:\n" << target.point_abs - homepoint << std::endl;
+	std::cout << "TARGET:\n" << target.point_abs - homepoint << std::endl;
 	//std::cout << "SPEED:\n" << velocity_need << std::endl;
 	
 	std_msgs::String msg;
