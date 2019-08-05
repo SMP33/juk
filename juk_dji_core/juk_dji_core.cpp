@@ -226,7 +226,7 @@ void update_data()
 		
 			DJI::OSDK::Gimbal::SpeedData gimbalSpeed;
 		
-			nAngle.yaw = nAngle.yaw + data_Course * 10*GeoMath::CONST.RAD2DEG;
+			//nAngle.yaw = nAngle.yaw + data_Course * 10*GeoMath::CONST.RAD2DEG;
 			
 			gimbalSpeed.roll  = calc_gimbal_speed(cAngle.roll, nAngle.roll);
 			gimbalSpeed.pitch = calc_gimbal_speed(cAngle.pitch, nAngle.pitch);
