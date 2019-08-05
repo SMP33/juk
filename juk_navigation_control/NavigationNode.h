@@ -82,7 +82,7 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 
 	
 	auto now = ros::Time::now();
-	if (set_homepoint_flag&&(now - node_start_time).toNSec() > 500000000)
+	if (set_homepoint_flag&&(now - node_start_time).toNSec() > 5000000000)
 	{
 		homepoint = GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
 		target.point_abs = homepoint;
@@ -205,8 +205,8 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 	if (velocity_need.z > max_z_speed)
 		velocity_need = velocity_need * (max_z_speed / velocity_need.z);
 
-	std::cout << "TARGET:\n" << target.point_abs - homepoint << std::endl;
-	std::cout << "SPEED:\n" << velocity_need << std::endl;
+	//std::cout << "TARGET:\n" << target.point_abs - homepoint << std::endl;
+	//std::cout << "SPEED:\n" << velocity_need << std::endl;
 	
 	std_msgs::String msg;
 
