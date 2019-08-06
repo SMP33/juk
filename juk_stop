@@ -9,3 +9,5 @@ do
   rosnode kill $i
   num=$((num+1))
 done
+
+rosnode kill EmlidPub

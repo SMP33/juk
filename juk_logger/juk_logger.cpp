@@ -1,4 +1,4 @@
-
+#include <fstream>
 
 #include "logger.h"
 
@@ -33,6 +33,8 @@ int main(int argc, char *argv[])
 	
 	SimpleSub<juk_msg::reach_msg> reach(&nh, "REACH_EMLID_DATA", start_time);
 	
+	ofstream log_file;
+	c.log_file.open("last.log");
 	
 	while (ros::ok())
 	{
@@ -105,6 +107,7 @@ int main(int argc, char *argv[])
 		reach.clean_upd();
 		
 		cout << str.str();
+		log_file<<str.str();
 		
 		ros::spinOnce();
 		r.sleep();
