@@ -86,7 +86,7 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 	auto now = ros::Time::now();
 	if (set_homepoint_flag&&(now - node_start_time).toNSec() > 5000000000)
 	{
-		target.course = input->course;
+		target.course = input->course*GeoMath::CONST.RAD2DEG;
 		homepoint = GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
 		target.point_abs = homepoint;
 		
@@ -109,7 +109,7 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 		output_dji.data_z = velocity_need.z;
 		output_dji.flag = ctrl_flag;
 		
-		output_dji.course = 0;
+		output_dji.course = target.course;
 	}
 	else
 	{
@@ -227,6 +227,7 @@ void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg:
 	this->target.break_mode = target->break_distance_mode;
 	this->target.cruising_speed = target->speed;
 	this->target.accurancy = target->acc;
+	this->target.course = target->course;
 	
 	switch (target->system)
 	{
