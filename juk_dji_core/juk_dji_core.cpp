@@ -118,7 +118,7 @@ void gimbal_camera_callback(const juk_msg::juk_dji_camera_control_msg::ConstPtr&
 	}
 	
 //	cout << "~~~~~~~~~~~~~~~~~~~~~~ ";
-//	cout << nAngle.yaw << " " << nAngle.pitch << " " << nAngle.roll << endl;
+	cout << nAngle.yaw << " " << nAngle.pitch << " " << nAngle.roll << endl;
 	
 	nAngle.yaw = msg->yaw;
 	nAngle.pitch = msg->pitch;
@@ -222,15 +222,17 @@ void update_data()
 		
 			cAngle.roll  = gibmal.roll * 10 - iAngle.roll;
 			cAngle.pitch = gibmal.pitch * 10 - iAngle.pitch;
-			cAngle.yaw   = gibmal.yaw * 10 - iAngle.yaw;
+			//cAngle.yaw   = gibmal.yaw * 10 - iAngle.yaw;
+			cAngle.yaw   = gibmal.yaw * 10;
 		
 			DJI::OSDK::Gimbal::SpeedData gimbalSpeed;
 		
-			//nAngle.yaw = nAngle.yaw + data_Course * 10*GeoMath::CONST.RAD2DEG;
+			nAngle.yaw = data_Course * 10*GeoMath::CONST.RAD2DEG;
 			
 			gimbalSpeed.roll  = calc_gimbal_speed(cAngle.roll, nAngle.roll);
 			gimbalSpeed.pitch = calc_gimbal_speed(cAngle.pitch, nAngle.pitch);
 			gimbalSpeed.yaw   = calc_gimbal_speed(cAngle.yaw, nAngle.yaw);
+			
 			gimbalSpeed.gimbal_control_authority = 1;
 			gimbalSpeed.disable_fov_zoom = 0;
 			gimbalSpeed.ignore_user_stick = 0;
@@ -300,7 +302,7 @@ int main(int argc, char *argv[])
 
 	auto st=v->broadcast->getStatus();
 
-	//===============Подписка на указанные темы==========//
+	//===============пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ==========//
 	ACK::ErrorCode subscribeStatus;
 	subscribeStatus = v->subscribe->verify(5000);
 
@@ -326,7 +328,7 @@ int main(int argc, char *argv[])
 
 	subscribeStatus = v->subscribe->startPackage(pkgIndex, 50000);
 #endif 
-	//==========Основной цикл==========//
+	//==========пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ==========//
 	ros::Rate r(freq);
 	
 	
