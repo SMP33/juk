@@ -2,7 +2,7 @@
 roscore &
 sleep 5
 
-path="/usr/local/bin"
+path="/usr/local/bin/juk"
 
 data=`rosnode list | grep JUK`
 
