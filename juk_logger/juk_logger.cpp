@@ -9,6 +9,8 @@
 #include <juk_msg/juk_set_target_data_msg.h>
 #include <juk_msg/reach_msg.h>
 
+
+
 #define pr(x,y) <<  x <<": "<<y<<endl
 
 using namespace std;
@@ -35,6 +37,8 @@ int main(int argc, char *argv[])
 	
 	ofstream log_file;
 	log_file.open("last.log");
+	
+	SimpleServer host(20045);
 	
 	while (ros::ok())
 	{
@@ -108,6 +112,7 @@ int main(int argc, char *argv[])
 		
 		cout << str.str();
 		log_file<<str.str();
+		host.set_response(str.str());
 		
 		ros::spinOnce();
 		r.sleep();
