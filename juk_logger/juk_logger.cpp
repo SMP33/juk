@@ -40,6 +40,8 @@ int main(int argc, char *argv[])
 	
 	SimpleServer host(20045);
 	
+	unsigned long id=0;
+	
 	while (ros::ok())
 	{
 		stringstream str;
@@ -93,6 +95,7 @@ int main(int argc, char *argv[])
 		str.precision(10);
 		
 		str << "~ ~ ~ ~ ~"  << endl;
+		str << "ID:["<<id<<"]"<<endl;
 		str << "TIME:[" << (ros::Time::now() - start_time) << "]" << endl;
 		
 		str << gps.get_full_str();
@@ -116,6 +119,7 @@ int main(int argc, char *argv[])
 		
 		ros::spinOnce();
 		r.sleep();
+		id++;
 	}
 	return 0;
 }
