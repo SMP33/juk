@@ -49,7 +49,6 @@ private:
 	ros::Publisher pub_position_data;
 	ros::Subscriber sub_dji_gps;
 	ros::Subscriber sub_set_target;
-	ros::Publisher pub_str;
 	
 	uint8_t ctrl_mode;
 	
@@ -64,7 +63,6 @@ NavigationNode::NavigationNode()
 	node_start_time = ros::Time::now();
 	pub_dji_control = nh.advertise<juk_msg::juk_control_dji_msg>("JUK/CONTROL_DJI", 1);
 	pub_position_data = nh.advertise<juk_msg::juk_position_data_msg>("JUK/POSITION_DATA", 1);
-	pub_str = nh.advertise<std_msgs::String>("JUK/STR", 1);
 	
 	target.cruising_speed = 3;
 	target.accurancy = 0.3;
@@ -215,9 +213,6 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 
 	std::stringstream ss;
 	ss << current_point_abs - homepoint;
-	msg.data = ss.str();
-	
-	pub_str.publish(msg);
 	//std::cout << current_point_abs << std::endl;
 	//std::cout << std::endl;
 }
