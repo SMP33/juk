@@ -118,7 +118,7 @@ void gimbal_camera_callback(const juk_msg::juk_dji_camera_control_msg::ConstPtr&
 	}
 	
 //	cout << "~~~~~~~~~~~~~~~~~~~~~~ ";
-	cout << nAngle.yaw << " " << nAngle.pitch << " " << nAngle.roll << endl;
+	//cout << nAngle.yaw << " " << nAngle.pitch << " " << nAngle.roll << endl;
 	
 	nAngle.yaw = msg->yaw;
 	nAngle.pitch = msg->pitch;
@@ -209,7 +209,6 @@ void update_data()
 				
 			else
 			{
-				cout << current_ctrlData.z << endl;
 				
 				if (ctrl_flag == 13) v->control->emergencyBrake();
 				

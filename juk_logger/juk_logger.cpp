@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 		str << reach.get_full_str();
 		reach.clean_upd();
 		
-		cout << str.str();
+		//cout << str.str();
 		log_file<<str.str();
 		host.set_response(str.str());
 		

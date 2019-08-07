@@ -206,7 +206,7 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 	if (velocity_need.z > max_z_speed)
 		velocity_need = velocity_need * (max_z_speed / velocity_need.z);
 
-	std::cout << "TARGET:\n" << target.point_abs - homepoint << std::endl;
+	
 	//std::cout << "SPEED:\n" << velocity_need << std::endl;
 	
 	std_msgs::String msg;
@@ -224,6 +224,8 @@ void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg:
 	this->target.accurancy = target->acc;
 	this->target.course = target->course;
 	
+	
+	
 	switch (target->system)
 	{
 	case juk_msg::juk_set_target_data_msg::system_absolut:
@@ -238,4 +240,6 @@ void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg:
 		this->target.point_abs = this->target.point_abs + GeoMath::v3(target->data_x, target->data_y, target->data_z);
 		break;	
 	}
+	
+	std::cout << "TARGET:\n" << this->target.point_abs - homepoint << std::endl;
 }
