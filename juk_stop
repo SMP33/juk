@@ -10,4 +10,4 @@ do
   num=$((num+1))
 done
 
-rosnode kill EmlidPub
+rosnode kill Reach_Emlid_Node
