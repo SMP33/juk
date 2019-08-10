@@ -212,12 +212,7 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 	GeoMath::v2 cN(cos(target.course*GeoMath::CONST.DEG2RAD), sin(target.course*GeoMath::CONST.DEG2RAD));
 
 	yaw_rate = -cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG/2;
-	
-	std::cout << "dC: " << yaw_rate<< std::endl;
-	std::cout << "cC: " << cC.angle_xy(GeoMath::v2(1, 0))*GeoMath::CONST.RAD2DEG << std::endl;
-	std::cout << "nC: " << cN.angle_xy(GeoMath::v2(1, 0))*GeoMath::CONST.RAD2DEG << std::endl << std::endl;
-
-	
+		
 	velocity_need = offset.normalize_xyz(need_abs_speed);
 	if (abs(yaw_rate) < 3)
 	{
