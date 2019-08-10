@@ -64,7 +64,7 @@ NavigationNode::NavigationNode()
 	pub_dji_control = nh.advertise<juk_msg::juk_control_dji_msg>("JUK/CONTROL_DJI", 1);
 	pub_position_data = nh.advertise<juk_msg::juk_position_data_msg>("JUK/POSITION_DATA", 1);
 	
-	target.cruising_speed = 3;
+	target.cruising_speed = 1;
 	target.accurancy = 0.3;
 	target.course = 0;
 	ctrl_mode = juk_msg::juk_set_target_data_msg::mode_allow_break_distance;
