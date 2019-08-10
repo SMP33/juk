@@ -29,7 +29,7 @@ using namespace std;
 Vehicle*   v;
 const int F_MODE = 1684;
 auto default_ctrlFlag = Control::VERTICAL_VELOCITY | Control::HORIZONTAL_VELOCITY |
-     Control::YAW_ANGLE | Control::STABLE_DISABLE;
+     Control::YAW_RATE | Control::STABLE_DISABLE;
 
 DJI::OSDK::Control::CtrlData            default_ctrlData(default_ctrlFlag,0,0,0,0);
 DJI::OSDK::Control::CtrlData            current_ctrlData(default_ctrlData);
@@ -46,7 +46,7 @@ juk_msg::juk_dji_device_status_msg msg_device_status;
 
 ros::Time last_ctrl_update_time;
 
-uint8_t ctrl_flag = juk_msg::juk_control_dji_msg::flag_break;
+int ctrl_flag = juk_msg::juk_control_dji_msg::flag_break;
 RotationAngle iAngle, nAngle, cAngle;
 
 
@@ -92,7 +92,9 @@ void ctrl_callback(const juk_msg::juk_control_dji_msg::ConstPtr& msg)
 	current_ctrlData.y = msg->data_y;
 	current_ctrlData.z = msg->data_z;
 	current_ctrlData.yaw = msg->course;	
-	ctrl_flag = msg->flag;
+	ctrl_flag = int(msg->flag);
+	
+	
 }
 
 void gimbal_camera_callback(const juk_msg::juk_dji_camera_control_msg::ConstPtr& msg)
@@ -209,11 +211,27 @@ void update_data()
 				
 			else
 			{
+				//cout << "M: " << ctrl_flag << endl;
+				switch (ctrl_flag)
+				{
+				case 5:
+					current_ctrlData.flag = Control::VERTICAL_VELOCITY | Control::HORIZONTAL_VELOCITY |
+											Control::YAW_RATE | Control::STABLE_DISABLE;
+					v->control->flightCtrl(current_ctrlData);
+					break;
+				case 7:
+					current_ctrlData.flag = Control::VERTICAL_VELOCITY | Control::HORIZONTAL_POSITION |
+											Control::YAW_RATE | Control::STABLE_DISABLE;
+					v->control->flightCtrl(current_ctrlData);
+					break;
+				case 13:
+					v->control->emergencyBrake();
+					break;
+				default:
+					v->control->emergencyBrake();
+					break;
+				}			
 				
-				if (ctrl_flag == 13) v->control->emergencyBrake();
-				
-				else				
-				v->control->flightCtrl(current_ctrlData);
 			}
 							
 			auto gibmal = v->broadcast->getGimbal();
@@ -221,7 +239,6 @@ void update_data()
 		
 			cAngle.roll  = gibmal.roll * 10 - iAngle.roll;
 			cAngle.pitch = gibmal.pitch * 10 - iAngle.pitch;
-			//cAngle.yaw   = gibmal.yaw * 10 - iAngle.yaw;
 			cAngle.yaw   = gibmal.yaw * 10;
 		
 			DJI::OSDK::Gimbal::SpeedData gimbalSpeed;
