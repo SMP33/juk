@@ -68,7 +68,7 @@ GeoMath::v3geo sim_pos(3.14 / 4, 3.14 / 3, 100);
 const int freq = 5;
 GeoMath::v3 vel( 2 / (double)freq,0,0);
 #else
-const int freq = 20;
+const int freq = 30;
 #endif // NO_DJI_HARDWARE
 
 int calc_gimbal_speed(int current, int need)

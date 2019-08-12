@@ -67,7 +67,7 @@ NavigationNode::NavigationNode()
 	pub_dji_control = nh.advertise<juk_msg::juk_control_dji_msg>("JUK/CONTROL_DJI", 1);
 	pub_position_data = nh.advertise<juk_msg::juk_position_data_msg>("JUK/POSITION_DATA", 1);
 	
-	target.cruising_speed = 3;
+	target.cruising_speed = 10;
 	target.accurancy = 0.3;
 	target.course = 0;
 	yaw_rate = 0;
@@ -186,23 +186,6 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 		
 		if (current_distance < break_distance + addition_break_time*need_abs_speed+1.5)
 		{
-			double max_break_zone_speed = abs_speed;
-			double break_zone_speed;
-			
-			current_distance < 0.1 ? 
-				0 :
-				(current_distance < 1 ? pow(current_distance, 3) : 2);
-			
-			if (current_distance < 0.1) break_zone_speed = 0;
-			else
-			if (current_distance < 1) break_zone_speed = pow(current_distance, 2);
-			else
-				break_zone_speed = current_distance/3;
-				
-			if (current_speed > abs_speed && current_distance > 1)
-				ctrl_flag = 13;
-			need_abs_speed = break_zone_speed;
-			
 			ctrl_flag = 7;
 		}
 		break;
@@ -214,6 +197,8 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 	yaw_rate = -cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG/2;
 		
 	velocity_need = offset.normalize_xyz(need_abs_speed);
+	std::cout.flags(std::ios::fixed);
+	std::cout << offset << std::endl;
 	if (abs(yaw_rate) < 3)
 	{
 		if (velocity_need.z > max_z_speed)
@@ -221,16 +206,9 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 	
 		if (ctrl_flag == 7)
 		{
-			if (current_distance > 0.3)
-			{
-				velocity_need.x = offset.x;
-				velocity_need.y = offset.y;
-			}
-			else
-			{
-				velocity_need.x = 0;
-				velocity_need.y = 0;
-			}
+			velocity_need.x = offset.x;
+			velocity_need.y = offset.y;
+			velocity_need.z = offset.z/2; 
 		}
 	}
 	else
@@ -238,6 +216,7 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 		ctrl_flag = 5;
 		velocity_need.x = 0;
 		velocity_need.y = 0;
+		velocity_need.z = 0;
 	}
 
 }
