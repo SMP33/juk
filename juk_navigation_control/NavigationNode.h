@@ -8,6 +8,8 @@
 #include "juk_msg/juk_set_target_data_msg.h"
 #include "juk_msg/juk_position_data_msg.h"
 
+#include <juk_msg/reach_msg.h>
+
 #include "std_msgs/String.h"
 
 
@@ -20,12 +22,15 @@ public:
 	
 
 private:
+	const int max_precision_uptime=1000000000;
 	void gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input);
+	void precision_gps_callback(const juk_msg::reach_msg::ConstPtr& in);
 	void set_target_callback(const juk_msg::juk_set_target_data_msg::ConstPtr& input);
 	ros::Time node_start_time;
 	bool set_homepoint_flag = true;
 	
 	GeoMath::v3geo	homepoint;
+	GeoMath::v3geo	homepoint_precision;
 	GeoMath::v3geo	current_point_abs;
 	GeoMath::v3		current_velocity;
 	GeoMath::v3     velocity_need;
@@ -51,11 +56,15 @@ private:
 	ros::Publisher pub_position_data;
 	ros::Subscriber sub_dji_gps;
 	ros::Subscriber sub_set_target;
+	ros::Subscriber sub_precision_gps;
 	
 	uint8_t ctrl_mode;
 	
 	uint8_t ctrl_flag;
 	juk_msg::juk_position_data_msg position_data;
+	GeoMath::v3geo precision_position;
+	ros::Time precision_pos_uptime;
+	int  precision_pos_quality;
 	
 	void calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath::v3 current_velocity, uint8_t ctrl_mode);
 
@@ -67,97 +76,18 @@ NavigationNode::NavigationNode()
 	pub_dji_control = nh.advertise<juk_msg::juk_control_dji_msg>("JUK/CONTROL_DJI", 1);
 	pub_position_data = nh.advertise<juk_msg::juk_position_data_msg>("JUK/POSITION_DATA", 1);
 	
-	target.cruising_speed = 10;
+	target.cruising_speed = 5;
 	target.accurancy = 0.3;
 	target.course = 0;
 	yaw_rate = 0;
+	precision_pos_quality = 6;
 	ctrl_mode = juk_msg::juk_set_target_data_msg::mode_allow_break_distance;
 
 	sub_dji_gps = nh.subscribe("JUK/DJI/GPS", 1, &NavigationNode::gps_callback, this);
 	sub_set_target = nh.subscribe("JUK/TARGET", 1, &NavigationNode::set_target_callback, this);
+	sub_precision_gps = nh.subscribe("REACH_EMLID_DATA", 1, &NavigationNode::precision_gps_callback, this);
 	stable_now = false;
 	stable_last = false;
-}
-
-void
-NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
-{
-
-
-	
-	auto now = ros::Time::now();
-	if (set_homepoint_flag&&(now - node_start_time).toNSec() > 5000000000)
-	{
-		target.course = input->course*GeoMath::CONST.RAD2DEG;
-		homepoint = GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
-		target.point_abs = homepoint;
-		
-		set_homepoint_flag = false;
-		
-		std::cout << "HOMEPOINT SET" << std::endl;
-	}
-	
-	current_point_abs =  GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
-	current_velocity = GeoMath::v3(input->vx, input->vy, input->vz);
-	
-	current_point_home = current_point_abs - homepoint;
-	
-	position_data.alt = current_point_abs.alt;
-	position_data.lat = current_point_abs.lat;
-	position_data.lng = current_point_abs.lng;
-	
-	position_data.x = current_point_home.x;
-	position_data.y = current_point_home.y;
-	position_data.z = current_point_home.z;
-
-	position_data.course = input->course*GeoMath::CONST.RAD2DEG;
-	
-	juk_msg::juk_control_dji_msg output_dji;
-	
-	if (!set_homepoint_flag)
-	{
-		calculateVelocity(target.cruising_speed, (target.point_abs - current_point_abs), current_velocity, ctrl_mode);
-		
-		output_dji.data_x = velocity_need.x;
-		output_dji.data_y = velocity_need.y;
-		output_dji.data_z = velocity_need.z;
-		output_dji.flag = ctrl_flag;
-		
-		output_dji.course = yaw_rate;
-		//output_dji.course = 0;
-		
-	}
-	else
-	{
-		output_dji.data_x = 0;
-		output_dji.data_y = 0;
-		output_dji.data_z = 0;
-	}
-	
-	
-	
-
-	position_data.dist_to_target = (current_point_abs - target.point_abs).length_xyz();
-	
-	
-	stable_now = (position_data.dist_to_target <= target.accurancy);
-	
-	if (stable_now)
-	{
-		if (!stable_last)
-		{
-			stable_start = ros::Time::now();
-		}
-		position_data.stable_time = (ros::Time::now() - stable_start).sec;
-	}
-	else
-	{
-		position_data.stable_time = 0;
-	}
-	
-	stable_last = stable_now;
-	pub_dji_control.publish(output_dji);
-	pub_position_data.publish(position_data);
 }
 
 
@@ -221,9 +151,104 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 
 }
 
+
+void
+NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
+{
+
+
+	
+	auto now = ros::Time::now();
+	if (set_homepoint_flag&&(now - node_start_time).toNSec() > 5000000000 && (precision_pos_quality == 1 || precision_pos_quality==2))
+	{
+		target.course = input->course*GeoMath::CONST.RAD2DEG;
+		homepoint = GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
+		homepoint_precision = GeoMath::v3geo(precision_position.lat, precision_position.lng, input->alt);
+		target.point_abs = homepoint;
+		
+		set_homepoint_flag = false;
+		
+		std::cout << "HOMEPOINT SET" << std::endl;
+	}
+	
+	current_point_abs =  GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
+	current_velocity = GeoMath::v3(input->vx, input->vy, input->vz);
+	
+	current_point_home = current_point_abs - homepoint;
+	
+	position_data.alt = current_point_abs.alt;
+	position_data.lat = current_point_abs.lat;
+	position_data.lng = current_point_abs.lng;
+	
+	position_data.x = current_point_home.x;
+	position_data.y = current_point_home.y;
+	position_data.z = current_point_home.z;
+
+	position_data.course = input->course*GeoMath::CONST.RAD2DEG;
+	
+	juk_msg::juk_control_dji_msg output_dji;
+	
+	if (!set_homepoint_flag)
+	{
+		calculateVelocity(target.cruising_speed, (target.point_abs - current_point_abs), current_velocity, ctrl_mode);
+		
+		output_dji.data_x = velocity_need.x;
+		output_dji.data_y = velocity_need.y;
+		output_dji.data_z = velocity_need.z;
+		output_dji.flag = ctrl_flag;
+		
+		output_dji.course = yaw_rate;
+		//output_dji.course = 0;
+		
+	}
+	else
+	{
+		output_dji.data_x = 0;
+		output_dji.data_y = 0;
+		output_dji.data_z = 0;
+	}
+	
+	position_data.dist_to_target = (current_point_abs - target.point_abs).length_xyz();
+	
+	stable_now = (position_data.dist_to_target <= target.accurancy);
+	
+	if (stable_now)
+	{
+		if (!stable_last)
+		{
+			stable_start = ros::Time::now();
+		}
+		position_data.stable_time = (ros::Time::now() - stable_start).sec;
+	}
+	else
+	{
+		position_data.stable_time = 0;
+	}
+	
+	stable_last = stable_now;
+	pub_dji_control.publish(output_dji);
+	pub_position_data.publish(position_data);
+}
+
+
+void 
+NavigationNode::precision_gps_callback(const juk_msg::reach_msg::ConstPtr& in)
+{
+	precision_pos_uptime = ros::Time::now();
+	precision_pos_quality = in->quality;
+	
+	precision_position.lat = in->lat;
+	precision_position.lng = in->lng;
+	precision_position.alt = current_point_abs.alt;
+}
+
 void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg::ConstPtr& target)
 {
 	this->target.break_mode = target->break_distance_mode;
+	if (target->speed > 5)
+		this->target.cruising_speed;
+	else
+		
 	this->target.cruising_speed = target->speed;
 	this->target.accurancy = target->acc;
 	this->target.course = target->course;

@@ -16,7 +16,8 @@ int main(int argc, char *argv[])
 	ros::Rate r(20);
 	
 	juk_msg::reach_msg msg;
-	
+	usleep(2000000);
+	pub.publish(msg);
 	
 	while (ros::ok())
 	{
@@ -34,8 +35,9 @@ int main(int argc, char *argv[])
 			msg.time_h = d.hh;
 			msg.time_m = d.mm;
 			msg.time_s = d.ss;
+			pub.publish(msg);
 		}
-		pub.publish(msg);
+		
 		ros::spinOnce();
 		r.sleep();
 	}
