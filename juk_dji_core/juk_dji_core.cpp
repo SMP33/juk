@@ -21,7 +21,8 @@
 //#define DEBUG_ROS
 //
 //#define NO_DJI_HARDWARE
-
+//
+#define NO_GIMBAL
 
 
 using namespace std;
@@ -106,6 +107,8 @@ void gimbal_camera_callback(const juk_msg::juk_dji_camera_control_msg::ConstPtr&
 	angleData.roll = msg->roll;
 	angleData.duration = 3;
 	
+#ifndef NO_GIMBAL
+
 	switch (msg->action)
 	{
 	case juk_msg::juk_dji_camera_control_msg::take_photo:
@@ -118,7 +121,7 @@ void gimbal_camera_callback(const juk_msg::juk_dji_camera_control_msg::ConstPtr&
 		v->camera->videoStop();
 		break;
 	}
-	
+#endif // !NO_GIMBAL
 //	cout << "~~~~~~~~~~~~~~~~~~~~~~ ";
 	//cout << nAngle.yaw << " " << nAngle.pitch << " " << nAngle.roll << endl;
 	
@@ -233,10 +236,13 @@ void update_data()
 				}			
 				
 			}
-							
-			auto gibmal = v->broadcast->getGimbal();
+			
+			
+			
+			Telemetry::Gimbal  gibmal;
+			#ifndef NO_GIMBAL
+			
 			gibmal = v->broadcast->getGimbal();
-		
 			cAngle.roll  = gibmal.roll * 10 - iAngle.roll;
 			cAngle.pitch = gibmal.pitch * 10 - iAngle.pitch;
 			cAngle.yaw   = gibmal.yaw * 10;
@@ -259,7 +265,8 @@ void update_data()
 			gimbalSpeed.reserved1 = 0;
 		
 			v->gimbal->setSpeed(&gimbalSpeed);
-			 
+			#endif
+			
 			#endif
 			msg_device_status.authority = juk_msg::juk_dji_device_status_msg::CONTROL_BY_SDK;
 			#ifdef DEBUG_ROS
