@@ -127,8 +127,8 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 	yaw_rate = -cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG/2;
 		
 	velocity_need = offset.normalize_xyz(need_abs_speed);
-	std::cout.flags(std::ios::fixed);
-	std::cout << offset << std::endl;
+	//std::cout.flags(std::ios::fixed);
+	//std::cout << offset << std::endl;
 	if (abs(yaw_rate) < 3)
 	{
 		if (velocity_need.z > max_z_speed)
@@ -156,7 +156,9 @@ void
 NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 {
 	auto now = ros::Time::now();
-	if (set_homepoint_flag&&(now - node_start_time).toNSec() > 5000000000 && (precision_pos_quality == 1 || precision_pos_quality==2))
+	if (set_homepoint_flag&&(now - node_start_time).toNSec() > 5000000000
+		//&& (precision_pos_quality == 1 || precision_pos_quality==2)
+		)
 	{
 		target.course = input->course*GeoMath::CONST.RAD2DEG;
 		homepoint = GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
@@ -171,12 +173,12 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 	
 	if ((precision_pos_quality == 1 || precision_pos_quality == 2) && (now - precision_pos_uptime).toNSec() < 1000000000)
 	{
-		std::cout << "Emlid" << std::endl;
+		//std::cout << "Emlid" << std::endl;
 		current_point_abs = precision_position;
 	}
 	else
 	{
-		std::cout << "A3" << std::endl;
+		//std::cout << "A3" << std::endl;
 		current_point_abs =  GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
 	}	
 	
@@ -270,7 +272,7 @@ void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg:
 		break;
 		
 	case juk_msg::juk_set_target_data_msg::system_home:
-		this->target.point_abs = homepoint + GeoMath::v3(target->data_x, target->data_y, target->data_z);
+		this->target.point_abs = homepoint + GeoMath::v3(target->data_x, target->data_y, target->data_z );
 		break;
 		
 	case juk_msg::juk_set_target_data_msg::system_offset_from_target:

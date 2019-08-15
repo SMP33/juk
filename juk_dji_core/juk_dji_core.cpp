@@ -29,7 +29,7 @@ using namespace std;
 Vehicle*   v;
 const int F_MODE = 1684;
 auto default_ctrlFlag = Control::VERTICAL_VELOCITY | Control::HORIZONTAL_VELOCITY |
-     Control::YAW_RATE | Control::STABLE_DISABLE;
+     Control::YAW_RATE | Control::STABLE_ENABLE;
 
 DJI::OSDK::Control::CtrlData            default_ctrlData(default_ctrlFlag,0,0,0,0);
 DJI::OSDK::Control::CtrlData            current_ctrlData(default_ctrlData);
@@ -216,12 +216,12 @@ void update_data()
 				{
 				case 5:
 					current_ctrlData.flag = Control::VERTICAL_VELOCITY | Control::HORIZONTAL_VELOCITY |
-											Control::YAW_RATE | Control::STABLE_DISABLE;
+											Control::YAW_RATE | Control::STABLE_ENABLE;
 					v->control->flightCtrl(current_ctrlData);
 					break;
 				case 7:
 					current_ctrlData.flag = Control::VERTICAL_VELOCITY | Control::HORIZONTAL_POSITION |
-											Control::YAW_RATE | Control::STABLE_DISABLE;
+											Control::YAW_RATE | Control::STABLE_ENABLE;
 					v->control->flightCtrl(current_ctrlData);
 					break;
 				case 13:
