@@ -155,9 +155,6 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 void
 NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 {
-
-
-	
 	auto now = ros::Time::now();
 	if (set_homepoint_flag&&(now - node_start_time).toNSec() > 5000000000 && (precision_pos_quality == 1 || precision_pos_quality==2))
 	{
@@ -171,10 +168,21 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 		std::cout << "HOMEPOINT SET" << std::endl;
 	}
 	
-	current_point_abs =  GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
+	
+	if ((precision_pos_quality == 1 || precision_pos_quality == 2) && (now - precision_pos_uptime).toNSec() < 1000000000)
+	{
+		std::cout << "Emlid" << std::endl;
+		current_point_abs = precision_position;
+	}
+	else
+	{
+		std::cout << "A3" << std::endl;
+		current_point_abs =  GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
+	}	
+	
 	current_velocity = GeoMath::v3(input->vx, input->vy, input->vz);
 	
-	current_point_home = current_point_abs - homepoint;
+	current_point_home = current_point_abs - homepoint_precision;
 	
 	position_data.alt = current_point_abs.alt;
 	position_data.lat = current_point_abs.lat;
