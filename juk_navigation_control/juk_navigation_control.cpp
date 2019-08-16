@@ -7,7 +7,10 @@ int main(int argc, char *argv[])
 {
 	ros::init(argc, argv, "JUK_NAVIGATION_NODE");
 	
-	NavigationNode navigationNode;
+	NavigationNode::Parameters par;
+	par.enable_emlid = false;
+	
+	NavigationNode navigationNode(par);
 	ros::spin();
 	return 0;
 }

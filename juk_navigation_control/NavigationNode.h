@@ -13,15 +13,24 @@
 #include "std_msgs/String.h"
 
 
+
+
 class NavigationNode
 {
 public:
-	NavigationNode();
+	struct Parameters
+	{
+		bool enable_emlid = false;
+	
+	};
+	
+	NavigationNode(Parameters par);
 	
 
 	
 
 private:
+	Parameters par;
 	const int max_precision_uptime=1000000000;
 	void gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input);
 	void precision_gps_callback(const juk_msg::reach_msg::ConstPtr& in);
@@ -70,13 +79,14 @@ private:
 
 };
 
-NavigationNode::NavigationNode()
+NavigationNode::NavigationNode(Parameters par):
+	par(par)
 {
 	node_start_time = ros::Time::now();
 	pub_dji_control = nh.advertise<juk_msg::juk_control_dji_msg>("JUK/CONTROL_DJI", 1);
 	pub_position_data = nh.advertise<juk_msg::juk_position_data_msg>("JUK/POSITION_DATA", 1);
 	
-	target.cruising_speed = 5;
+	target.cruising_speed = 1;
 	target.accurancy = 0.3;
 	target.course = 0;
 	yaw_rate = 0;
@@ -156,9 +166,11 @@ void
 NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 {
 	auto now = ros::Time::now();
-	if (set_homepoint_flag&&(now - node_start_time).toNSec() > 5000000000
-		//&& (precision_pos_quality == 1 || precision_pos_quality==2)
-		)
+	
+	bool allow_emlid = (par.enable_emlid&&(precision_pos_quality == 1 || precision_pos_quality == 2)) || !par.enable_emlid;
+	
+	if ((set_homepoint_flag&&(now - node_start_time).toNSec() > 5000000000)
+		&&allow_emlid)
 	{
 		target.course = input->course*GeoMath::CONST.RAD2DEG;
 		homepoint = GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
@@ -171,7 +183,7 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 	}
 	
 	
-	if ((precision_pos_quality == 1 || precision_pos_quality == 2) && (now - precision_pos_uptime).toNSec() < 1000000000)
+	if (allow_emlid && par.enable_emlid&&(now - precision_pos_uptime).toNSec() < 1000000000)
 	{
 		//std::cout << "Emlid" << std::endl;
 		current_point_abs = precision_position;
@@ -208,7 +220,6 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 		output_dji.flag = ctrl_flag;
 		
 		output_dji.course = yaw_rate;
-		//output_dji.course = 0;
 		
 	}
 	else
