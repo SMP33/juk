@@ -19,7 +19,7 @@ done
 echo ""
 
 
-C1="$path/juk_navigation_control" 
+C1="$path/juk_navigation_control 0" 
 $C1 & 
 P1=$!
 

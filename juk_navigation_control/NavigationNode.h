@@ -82,6 +82,12 @@ private:
 NavigationNode::NavigationNode(Parameters par):
 	par(par)
 {
+	usleep(5000000);
+	std::cout << "Parameters: " << std::endl;
+	std::cout << "\tenable_emlid: " << par.enable_emlid<< std::endl;
+	
+	std::cout << std::endl;
+	
 	node_start_time = ros::Time::now();
 	pub_dji_control = nh.advertise<juk_msg::juk_control_dji_msg>("JUK/CONTROL_DJI", 1);
 	pub_position_data = nh.advertise<juk_msg::juk_position_data_msg>("JUK/POSITION_DATA", 1);
