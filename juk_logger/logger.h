@@ -41,22 +41,34 @@ template<typename T>
 		
 		std::string get_full_str()
 		{
-			return full_str.str()+"\n";
+			return full_str.str()+"}";
 		}
 		void reset_str()
 		{
-			full_str = std::stringstream();
+			full_str.str("");
+			full_str.clear();
+			
 			full_str.flags(std::ios::fixed);
 			full_str.precision(10);
-			full_str << "@TOPIC:[" << topic_name <<"]"<< std::endl;
-			full_str << "\tUPD:[" << (upd ? "YES" : "NO") << "]" <<std::endl; 
-			full_str << "\tLAST_UPD:[" << (last_upd_time - start_time) << "]" << std::endl;
+			full_str << "\"" << topic_name << "\":{" << std::endl;
+			//std::cout << full_str.str() << std::endl;
+			full_str << "\t\"upd\": \"" << (upd ? "YES" : "NO") << "\"," << std::endl; 
+			//std::cout << full_str.str() << std::endl;
+			full_str << "\t\"last_upd\":" << (last_upd_time - start_time) << "," << std::endl;
+			//std::cout << full_str.str() << std::endl;
 			full_str << std::endl;
+			//std::cout << full_str.str() << std::endl;
+			
 		}
 		template<typename V>
-			void add_str(std::string txt, V value)
+			void add_str(std::string txt, V value,bool vrg)
 			{
-				full_str << "\t" << txt << ":[" << value << "]" << std::endl;
+				full_str << "\t\"" << txt << "\":" << value;
+				if(vrg)
+				full_str << ",";
+				
+				full_str << std::endl;
+				
 			}
 		
 		void callback(const typename T::ConstPtr& inp)

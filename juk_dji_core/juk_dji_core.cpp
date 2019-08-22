@@ -22,7 +22,7 @@
 //
 //#define NO_DJI_HARDWARE
 //
-#define NO_GIMBAL
+//#define NO_GIMBAL
 
 
 using namespace std;
@@ -113,6 +113,7 @@ void gimbal_camera_callback(const juk_msg::juk_dji_camera_control_msg::ConstPtr&
 	{
 	case juk_msg::juk_dji_camera_control_msg::take_photo:
 		v->camera->shootPhoto();
+		cout << "Shoot Photo" << endl;
 		break;
 	case juk_msg::juk_dji_camera_control_msg::start_video:
 		v->camera->videoStart();
