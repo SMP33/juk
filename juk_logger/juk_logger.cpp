@@ -94,6 +94,8 @@ int main(int argc, char *argv[])
 		str.flags(std::ios::fixed);
 		str.precision(10);
 		
+		str << "MESSAGE_BEGIN" << endl;
+		
 		str << "{" << endl;
 		str << "\"HEADER\": {" << endl;
 		str << "\"ID\": " << id <<","<< endl;
@@ -117,6 +119,9 @@ int main(int argc, char *argv[])
 		reach.clean_upd();
 		
 		str << "}\n}" << endl;
+		
+		str << "MESSAGE_END" << endl;
+		
 		//cout << str.str() << endl;;
 		log_file<<str.str();
 		host.set_response(str.str());

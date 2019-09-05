@@ -1,0 +1,63 @@
+\hypertarget{class_d_j_i___environment}{}\doxysection{Класс D\+J\+I\+\_\+\+Environment}
+\label{class_d_j_i___environment}\index{DJI\_Environment@{DJI\_Environment}}
+\doxysubsection*{Открытые члены}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{class_d_j_i___environment_a4af320866e313733ef1675c6d9d89db6}\label{class_d_j_i___environment_a4af320866e313733ef1675c6d9d89db6}} 
+{\bfseries D\+J\+I\+\_\+\+Environment} (const std\+::string \&config\+\_\+file\+\_\+path)
+\item 
+\mbox{\Hypertarget{class_d_j_i___environment_a8935902a01c6f2b158f8325c54a828df}\label{class_d_j_i___environment_a8935902a01c6f2b158f8325c54a828df}} 
+int {\bfseries get\+App\+\_\+id} () const
+\item 
+\mbox{\Hypertarget{class_d_j_i___environment_a5768193919a57cdd6e03222bdae67879}\label{class_d_j_i___environment_a5768193919a57cdd6e03222bdae67879}} 
+const std\+::string \& {\bfseries get\+Enc\+\_\+key} () const
+\item 
+\mbox{\Hypertarget{class_d_j_i___environment_acfb40f613cf645f474c5618fbfa67b36}\label{class_d_j_i___environment_acfb40f613cf645f474c5618fbfa67b36}} 
+const std\+::string \& {\bfseries get\+Device} () const
+\item 
+\mbox{\Hypertarget{class_d_j_i___environment_a3582bfb63870902dbf36685961d73bd9}\label{class_d_j_i___environment_a3582bfb63870902dbf36685961d73bd9}} 
+unsigned int {\bfseries get\+Baudrate} () const
+\item 
+\mbox{\Hypertarget{class_d_j_i___environment_aa84d6a119121da1471705097e7b339fb}\label{class_d_j_i___environment_aa84d6a119121da1471705097e7b339fb}} 
+bool {\bfseries get\+Config\+Result} () const
+\item 
+bool \mbox{\hyperlink{class_d_j_i___environment_a423ec0c1e18a62cd9f34b1757a5fe21e}{parse}} (std\+::string config\+\_\+file\+\_\+path)
+\item 
+\mbox{\Hypertarget{class_d_j_i___environment_a702ca33043fd6519184752bda19c7436}\label{class_d_j_i___environment_a702ca33043fd6519184752bda19c7436}} 
+const std\+::string \& {\bfseries get\+Device\+Acm} () const
+\item 
+\mbox{\Hypertarget{class_d_j_i___environment_ac99b30bf5ca6607d3536a30170eaa6fe}\label{class_d_j_i___environment_ac99b30bf5ca6607d3536a30170eaa6fe}} 
+void {\bfseries set\+Device\+Acm} (std\+::string dev\+\_\+path)
+\end{DoxyCompactItemize}
+\doxysubsection*{Открытые статические члены}
+\begin{DoxyCompactItemize}
+\item 
+static std\+::string \mbox{\hyperlink{class_d_j_i___environment_a05ff8bbd0580a12febc263166f166374}{find\+File}} (std\+::string file)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Методы}
+\mbox{\Hypertarget{class_d_j_i___environment_a05ff8bbd0580a12febc263166f166374}\label{class_d_j_i___environment_a05ff8bbd0580a12febc263166f166374}} 
+\index{DJI\_Environment@{DJI\_Environment}!findFile@{findFile}}
+\index{findFile@{findFile}!DJI\_Environment@{DJI\_Environment}}
+\doxysubsubsection{\texorpdfstring{findFile()}{findFile()}}
+{\footnotesize\ttfamily std\+::string D\+J\+I\+\_\+\+Environment\+::find\+File (\begin{DoxyParamCaption}\item[{std\+::string}]{file }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+\begin{DoxyNote}{Заметки}
+Find file within osdk-\/core directory 
+\end{DoxyNote}
+\mbox{\Hypertarget{class_d_j_i___environment_a423ec0c1e18a62cd9f34b1757a5fe21e}\label{class_d_j_i___environment_a423ec0c1e18a62cd9f34b1757a5fe21e}} 
+\index{DJI\_Environment@{DJI\_Environment}!parse@{parse}}
+\index{parse@{parse}!DJI\_Environment@{DJI\_Environment}}
+\doxysubsubsection{\texorpdfstring{parse()}{parse()}}
+{\footnotesize\ttfamily bool D\+J\+I\+\_\+\+Environment\+::parse (\begin{DoxyParamCaption}\item[{std\+::string}]{config\+\_\+file\+\_\+path }\end{DoxyParamCaption})}
+
+\begin{DoxyNote}{Заметки}
+sscanf have features on empty buffer.
+\end{DoxyNote}
+
+
+Объявления и описания членов классов находятся в файлах\+:\begin{DoxyCompactItemize}
+\item 
+juk\+\_\+dji\+\_\+core/common/\mbox{\hyperlink{dji__linux__environment_8hpp}{dji\+\_\+linux\+\_\+environment.\+hpp}}\item 
+juk\+\_\+dji\+\_\+core/common/\mbox{\hyperlink{dji__linux__environment_8cpp}{dji\+\_\+linux\+\_\+environment.\+cpp}}\end{DoxyCompactItemize}
