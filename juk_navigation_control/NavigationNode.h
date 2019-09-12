@@ -192,7 +192,7 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 	if (allow_emlid && par.enable_emlid&&(now - precision_pos_uptime).toNSec() < 1000000000)
 	{
 		//std::cout << "Emlid" << std::endl;
-		current_point_abs = precision_position;
+		current_point_abs = GeoMath::v3geo(precision_position.lat, precision_position.lng, input->alt);
 	}
 	else
 	{
@@ -289,6 +289,9 @@ void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg:
 		break;
 		
 	case juk_msg::juk_set_target_data_msg::system_home:
+	if(par.enable_emlid)
+		this->target.point_abs = homepoint_precision + GeoMath::v3(target->data_x, target->data_y, target->data_z );
+	else
 		this->target.point_abs = homepoint + GeoMath::v3(target->data_x, target->data_y, target->data_z );
 		break;
 		

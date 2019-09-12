@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 	
 	NavigationNode::Parameters par;
 		
-	par.enable_emlid = false;
+	par.enable_emlid = true;
 	NavigationNode navigationNode(par);
 	ros::spin();
 	return 0;
