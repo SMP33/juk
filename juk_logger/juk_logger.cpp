@@ -55,7 +55,8 @@ int main(int argc, char *argv[])
 		gps.add_str("vz", gps.data.vz, true);
 		gps.add_str("course", gps.data.course, true);
 		gps.add_str("sats", int(gps.data.satellites), true);
-		gps.add_str("quality", int(gps.data.quality), false);
+		gps.add_str("quality", int(gps.data.quality), true);
+		gps.add_str("flight_status", int(gps.data.flight_status), false);
 		
 		device_status.reset_str();
 		device_status.add_str("authority", int(device_status.data.authority), true);
@@ -120,7 +121,7 @@ int main(int argc, char *argv[])
 		
 		str << "}\n}" << endl;
 		
-		str << "MESSAGE_END" << endl;
+		str << "MESSAGE_END" << endl<<endl;
 		
 		//cout << str.str() << endl;;
 		log_file<<str.str();

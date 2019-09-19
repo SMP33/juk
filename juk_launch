@@ -17,17 +17,17 @@ done
 echo ""
 
 
-C1="$path/juk_navigation_control 0" 
+C1="$path/juk_navigation_control $@" 
 echo "Launch $C1"
 $C1 & 
 P1=$!
 
-C2="$path/juk_dji_core" 
+C2="$path/juk_dji_core $@" 
 echo "Launch $C2"
 $C2 & 
 P2=$!
 
-C3="$path/juk_logger" 
+C3="$path/juk_logger $@" 
 echo "Launch $C3"
 $C3 & 
 P3=$!
@@ -37,5 +37,10 @@ echo "Launch $C4"
 $C4 & 
 P4=$!
 
-wait $P1 $P2 $P3 $P4
+C5="$path/juk_aruco" 
+echo "Launch $C5"
+$C5 & 
+P5=$!
+
+wait $P1 $P2 $P3 $P4 $P5
 

@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['zoom_5fconfig_5ft_19',['zoom_config_t',['../structzoom__config__t.html',1,'']]],
-  ['zoom_5fparam_5ft_20',['zoom_param_t',['../unionzoom__param__t.html',1,'']]]
+  ['validateserialport_19',['validateSerialPort',['../class_linux_setup.html#a4f5dd202b92e7062f569da3b232f91db',1,'LinuxSetup']]]
 ];

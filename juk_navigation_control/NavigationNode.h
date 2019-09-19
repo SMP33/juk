@@ -7,34 +7,68 @@
 #include "juk_msg/juk_control_dji_msg.h"
 #include "juk_msg/juk_set_target_data_msg.h"
 #include "juk_msg/juk_position_data_msg.h"
+#include "juk_msg/juk_navigation_actions_msg.h"
+#include <juk_msg/juk_aruco_module_action.h>
+#include <juk_msg/juk_aruco_module_data.h>
 
 #include <juk_msg/reach_msg.h>
 
 #include "std_msgs/String.h"
 
+#include "../include/ArgParser.h"
 
-
+#define c(color,str)  "\x1B["<<color<<"m" << str << "\033[0m" 
 
 class NavigationNode
 {
 public:
-	struct Parameters
-	{
-		bool enable_emlid = false;
 	
+	enum STATES
+	{
+		IDLE           = 0,
+		FLY_SIMPLE     = 1,
+		FLY_SAFE       = 2,
+		LANDING_SIMPLE = 3,
+		LANDING_ARUCO  = 4,
+
+	};
+	enum SUB_STATES
+	{
+		NOTHING              = 0,
+		
+		FLY_SAFE_UP          = 201,
+		FLY_SAFE_CENTER      = 202,
+		
+		LANDING_SIMPLE_FLY   = 301,
+		LANDING_SIMPLE_LAND  = 302,
+			
+		LANDING_ARUCO_FLY    = 401,
+		LANDING_ARUCO_LAND   = 402,
 	};
 	
-	NavigationNode(Parameters par);
+	enum ACTIONS
+	{
+		SET_HOMEPOINT = 1
+	};
+	
+	
+
+
+	
+	NavigationNode(int argc, char** argv);
 	
 
 	
 
 private:
-	Parameters par;
-	const int max_precision_uptime=1000000000;
+	ArgParser_Int params;
+	const int max_precision_uptime = 1000000000;
 	void gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input);
 	void precision_gps_callback(const juk_msg::reach_msg::ConstPtr& in);
 	void set_target_callback(const juk_msg::juk_set_target_data_msg::ConstPtr& input);
+	void action_process_callback(const juk_msg::juk_navigation_actions_msg::ConstPtr& input);
+	
+	
 	ros::Time node_start_time;
 	bool set_homepoint_flag = true;
 	
@@ -45,15 +79,29 @@ private:
 	GeoMath::v3     velocity_need;
 	GeoMath::v3     current_point_home;
 	
-	struct 
+	struct Target
 	{
 		GeoMath::v3geo	point_abs;
 		uint8_t break_mode;
 		float cruising_speed;
 		float accurancy;
 		float course;
-	}target;
+	};
 	
+	struct ArUcoTarget
+	{
+		GeoMath::v3 offset;
+		ros::Time uptime;
+	};
+	
+	Target target, target_precision, current_target;
+	Target sub_target;
+	
+	ArUcoTarget aruco_land;
+	
+	int STATE;
+	int SUB_STATE;
+		
 	float yaw_rate;
 	
 	bool stable_now;
@@ -63,34 +111,56 @@ private:
 	ros::NodeHandle nh;
 	ros::Publisher pub_dji_control;
 	ros::Publisher pub_position_data;
+	ros::Publisher pub_aruco_action;
+	
 	ros::Subscriber sub_dji_gps;
 	ros::Subscriber sub_set_target;
 	ros::Subscriber sub_precision_gps;
+	ros::Subscriber sub_action_process;
+	ros::Subscriber sub_aruco_data;
 	
 	uint8_t ctrl_mode;
 	
 	uint8_t ctrl_flag;
+	
 	juk_msg::juk_position_data_msg position_data;
+	juk_msg::juk_control_dji_msg output_dji;
+	
 	GeoMath::v3geo precision_position;
 	ros::Time precision_pos_uptime;
 	int  precision_pos_quality;
 	
 	void calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath::v3 current_velocity, uint8_t ctrl_mode);
+	
 
 };
 
-NavigationNode::NavigationNode(Parameters par):
-	par(par)
+NavigationNode::NavigationNode(int argc, char** argv)
 {
+	
+	params.args["safe_height"] = 20;
+	params.args["enable_emlid"] = 0;
+	params.args["gear_height"] = 2;
+	params.args["aruco_marker_id"] = 10;
+	params.args["aruco_marker_size"] = 180;
+	
 	usleep(5000000);
-	std::cout << "Parameters: " << std::endl;
-	std::cout << "\tenable_emlid: " << par.enable_emlid<< std::endl;
+	
+	params.parse(argc, argv);
+	std::cout << c(32, "@Parameters JUK_NAVIGATION_NODE: ") << std::endl;
+	for (auto arg : params.args)
+	{
+		std::cout << c(32, "~~") << arg.first << ": " << c(32, arg.second) << std::endl;
+	}
 	
 	std::cout << std::endl;
 	
 	node_start_time = ros::Time::now();
+	aruco_land.uptime = node_start_time;
+	
 	pub_dji_control = nh.advertise<juk_msg::juk_control_dji_msg>("JUK/CONTROL_DJI", 1);
 	pub_position_data = nh.advertise<juk_msg::juk_position_data_msg>("JUK/POSITION_DATA", 1);
+	pub_aruco_action = nh.advertise<juk_msg::juk_aruco_module_action>("JUK/ARUCO/ACTION", 1);
 	
 	target.cruising_speed = 1;
 	target.accurancy = 0.3;
@@ -102,18 +172,23 @@ NavigationNode::NavigationNode(Parameters par):
 	sub_dji_gps = nh.subscribe("JUK/DJI/GPS", 1, &NavigationNode::gps_callback, this);
 	sub_set_target = nh.subscribe("JUK/TARGET", 1, &NavigationNode::set_target_callback, this);
 	sub_precision_gps = nh.subscribe("REACH_EMLID_DATA", 1, &NavigationNode::precision_gps_callback, this);
+	sub_action_process = nh.subscribe("JUK/NAVIGATION_ACTIONS", 1, &NavigationNode::action_process_callback, this);
+	
 	stable_now = false;
 	stable_last = false;
+	
+	STATE = STATES::FLY_SIMPLE;
+	SUB_STATE = SUB_STATES::NOTHING;
 }
 
 
 void
-NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath::v3 current_velocity,uint8_t ctrl_mode)
+NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath::v3 current_velocity, uint8_t ctrl_mode)
 {
 	ctrl_flag = 5;
-	const double max_break_acc = 3;
+	const double max_break_acc = 5;
 	const double max_force_acc = 0.7;
-	double need_abs_speed ;
+	double need_abs_speed;
 	
 	double max_z_speed = 5;
 	double current_speed = current_velocity.length_xyz();
@@ -130,7 +205,7 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 		
 		break_distance = ((abs_speed*abs_speed) / (2*max_break_acc));
 		
-		if (current_distance < break_distance + addition_break_time*need_abs_speed+1.5)
+		if (current_distance < break_distance + addition_break_time*need_abs_speed + 1.5)
 		{
 			ctrl_flag = 7;
 		}
@@ -140,12 +215,12 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 	GeoMath::v2 cC(cos(position_data.course*GeoMath::CONST.DEG2RAD), sin(position_data.course*GeoMath::CONST.DEG2RAD));
 	GeoMath::v2 cN(cos(target.course*GeoMath::CONST.DEG2RAD), sin(target.course*GeoMath::CONST.DEG2RAD));
 
-	yaw_rate = -cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG/2;
+	yaw_rate = -cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG / 2;
 		
 	velocity_need = offset.normalize_xyz(need_abs_speed);
 	//std::cout.flags(std::ios::fixed);
 	//std::cout << offset << std::endl;
-	if (abs(yaw_rate) < 3)
+	if(abs(yaw_rate) < 3)
 	{
 		if (velocity_need.z > max_z_speed)
 			velocity_need = velocity_need * (max_z_speed / velocity_need.z);
@@ -154,7 +229,7 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 		{
 			velocity_need.x = offset.x;
 			velocity_need.y = offset.y;
-			velocity_need.z = offset.z/2; 
+			velocity_need.z = offset.z / 2; 
 		}
 	}
 	else
@@ -167,13 +242,28 @@ NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath:
 
 }
 
+void
+NavigationNode::action_process_callback(const juk_msg::juk_navigation_actions_msg::ConstPtr& input)
+{
+	int action = input->action;
+	
+	switch (action)
+	{
+		
+	case ACTIONS::SET_HOMEPOINT:
+		set_homepoint_flag = true;
+		break;
+	default:
+		break;
+	}
+}
 
 void
 NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 {
 	auto now = ros::Time::now();
 	
-	bool allow_emlid = (par.enable_emlid&&(precision_pos_quality == 1 || precision_pos_quality == 2)) || !par.enable_emlid;
+	bool allow_emlid = (params.args["enable_emlid"]&&(precision_pos_quality == 1 || precision_pos_quality == 2)) || !params.args["enable_emlid"];
 	
 	if ((set_homepoint_flag&&(now - node_start_time).toNSec() > 5000000000)
 		&&allow_emlid)
@@ -182,22 +272,28 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 		homepoint = GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
 		homepoint_precision = GeoMath::v3geo(precision_position.lat, precision_position.lng, input->alt);
 		target.point_abs = homepoint;
+		target_precision.point_abs = homepoint_precision;
 		
 		set_homepoint_flag = false;
+		
+		STATE = STATES::FLY_SIMPLE;
+		SUB_STATE = SUB_STATES::NOTHING;
 		
 		std::cout << "HOMEPOINT SET" << std::endl;
 	}
 	
 	
-	if (allow_emlid && par.enable_emlid&&(now - precision_pos_uptime).toNSec() < 1000000000)
+	if (allow_emlid && params.args["enable_emlid"]&&(now - precision_pos_uptime).toNSec() < 1000000000)
 	{
 		//std::cout << "Emlid" << std::endl;
-		current_point_abs = GeoMath::v3geo(precision_position.lat, precision_position.lng, input->alt);
+		current_point_abs = precision_position;
+		current_target = target_precision;
 	}
 	else
 	{
 		//std::cout << "A3" << std::endl;
 		current_point_abs =  GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
+		current_target = target;
 	}	
 	
 	current_velocity = GeoMath::v3(input->vx, input->vy, input->vz);
@@ -214,18 +310,152 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 
 	position_data.course = input->course*GeoMath::CONST.RAD2DEG;
 	
-	juk_msg::juk_control_dji_msg output_dji;
+	GeoMath::v3 position_offset = current_target.point_abs - current_point_abs;
 	
 	if (!set_homepoint_flag)
 	{
-		calculateVelocity(target.cruising_speed, (target.point_abs - current_point_abs), current_velocity, ctrl_mode);
 		
-		output_dji.data_x = velocity_need.x;
-		output_dji.data_y = velocity_need.y;
-		output_dji.data_z = velocity_need.z;
-		output_dji.flag = ctrl_flag;
+		switch (STATE)
+		{
+		case STATES::FLY_SIMPLE:
+			calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, ctrl_mode);
 		
-		output_dji.course = yaw_rate;
+			output_dji.data_x = velocity_need.x;
+			output_dji.data_y = velocity_need.y;
+			output_dji.data_z = velocity_need.z;
+			output_dji.flag = ctrl_flag;
+		
+			output_dji.course = yaw_rate;
+			break;
+		case STATES::FLY_SAFE:
+			
+			if (!SUB_STATE)
+				SUB_STATE = SUB_STATES::FLY_SAFE_UP;
+			
+			switch (SUB_STATE)
+			{
+			case SUB_STATES::FLY_SAFE_UP:
+				
+				if (current_point_abs.alt - homepoint.alt < params.args["safe_alt"])
+				{
+					sub_target = current_target;
+					sub_target.point_abs = GeoMath::v3geo(current_point_abs.lat, current_point_abs.lng, params.args["safe_alt"] + homepoint.alt);
+					GeoMath::v3 sub_position_offset =  sub_target.point_abs - current_point_abs;
+					calculateVelocity(current_target.cruising_speed, sub_position_offset, current_velocity, juk_msg::juk_set_target_data_msg::mode_not_break_distance);
+				}
+				else
+				{
+					sub_target = current_target;
+					sub_target.point_abs.alt = params.args["safe_alt"] + homepoint.alt;
+					GeoMath::v3 sub_position_offset =  sub_target.point_abs - current_point_abs;
+					calculateVelocity(current_target.cruising_speed, sub_position_offset, current_velocity, ctrl_mode);
+				}
+				
+				if (position_offset.length_xy() < 2)
+				{
+					SUB_STATE = SUB_STATES::FLY_SAFE_CENTER;
+					calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, ctrl_mode);
+				}
+				
+				break;
+			case SUB_STATES::FLY_SAFE_CENTER:
+				
+				if (position_offset.length_xy() > 1)
+					calculateVelocity(current_target.cruising_speed, GeoMath::v3(position_offset.x, position_offset.y, 0), current_velocity, ctrl_mode);
+				else
+					calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, ctrl_mode);
+				
+				if (position_offset.length_xyz() < current_target.accurancy)
+				{
+					STATE = STATES::FLY_SIMPLE;
+					SUB_STATE = 0;					
+				}
+				
+				break;
+			default:
+				break;
+			}
+			
+			
+			output_dji.data_x = velocity_need.x;
+			output_dji.data_y = velocity_need.y;
+			output_dji.data_z = velocity_need.z;
+			output_dji.flag = ctrl_flag;
+		
+			output_dji.course = yaw_rate;
+			
+			break;
+		case STATES::LANDING_SIMPLE:
+			if (!SUB_STATE)
+				SUB_STATE = SUB_STATES::LANDING_SIMPLE_FLY;
+			
+			switch (SUB_STATE)
+			{
+			case SUB_STATES::LANDING_SIMPLE_FLY:
+				calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, juk_msg::juk_set_target_data_msg::mode_allow_break_distance);
+				if (position_offset.length_xyz() < current_target.accurancy)
+				{
+					STATE = STATES::LANDING_SIMPLE;
+					SUB_STATE = SUB_STATES::LANDING_SIMPLE_LAND;					
+				}
+				break;
+				
+			case SUB_STATES::LANDING_SIMPLE_LAND:
+				
+				calculateVelocity(0.6, GeoMath::v3(0, 0, -100), current_velocity, juk_msg::juk_set_target_data_msg::mode_not_break_distance);
+				
+				if (input->flight_status < 2)
+					set_homepoint_flag = true;
+				break;
+			case STATES::LANDING_ARUCO:
+				
+				if (!SUB_STATE || (ros::Time::now() - aruco_land.uptime).toNSec() >= 2000000000)
+					SUB_STATE = SUB_STATES::LANDING_ARUCO_FLY;
+				else
+					if ((ros::Time::now() - aruco_land.uptime).toNSec() < 2000000000 && SUB_STATE == SUB_STATES::LANDING_ARUCO_FLY)
+					SUB_STATE = SUB_STATES::LANDING_ARUCO_LAND;
+				
+				switch (SUB_STATE)
+				{
+				case SUB_STATES::LANDING_ARUCO_FLY:
+					calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, juk_msg::juk_set_target_data_msg::mode_allow_break_distance);
+					break;
+
+				case SUB_STATES::LANDING_ARUCO_LAND:
+					//if (aruco_land.offset.length_xy()>10)
+					break;
+				default:
+					break;
+				}
+				
+			default:
+				break;
+			}
+			
+			
+			
+			output_dji.data_x = velocity_need.x;
+			output_dji.data_y = velocity_need.y;
+			output_dji.data_z = velocity_need.z;
+			output_dji.flag = ctrl_flag;
+		
+			output_dji.course = yaw_rate;
+			
+
+			
+			break;
+			
+		default:
+			output_dji.data_x = 0;
+			output_dji.data_y = 0;
+			output_dji.data_z = 0;
+			output_dji.flag = 5;
+		
+			output_dji.course = yaw_rate;
+			
+
+			break;
+		}
 		
 	}
 	else
@@ -271,32 +501,35 @@ NavigationNode::precision_gps_callback(const juk_msg::reach_msg::ConstPtr& in)
 
 void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg::ConstPtr& target)
 {
+	STATE = (int)target->fly_mode;
+	SUB_STATE = 0;
+	std::cout << "STATE: " << STATE << std::endl;
 	this->target.break_mode = target->break_distance_mode;
-	if (target->speed > 5)
-		this->target.cruising_speed;
-	else
 		
 	this->target.cruising_speed = target->speed;
 	this->target.accurancy = target->acc;
 	this->target.course = target->course;
 	
+	this->target_precision.cruising_speed = target->speed;
+	this->target_precision.accurancy = target->acc;
+	this->target_precision.course = target->course;
 	
 	
 	switch (target->system)
 	{
 	case juk_msg::juk_set_target_data_msg::system_absolut:
-		this->target.point_abs = GeoMath::v3geo(target->data_x, target->data_y, target->data_z+homepoint.alt);
+		this->target.point_abs = GeoMath::v3geo(target->data_x, target->data_y, target->data_z + homepoint.alt);
+		this->target_precision.point_abs = GeoMath::v3geo(target->data_x, target->data_y, target->data_z + homepoint.alt);
 		break;
 		
 	case juk_msg::juk_set_target_data_msg::system_home:
-	if(par.enable_emlid)
-		this->target.point_abs = homepoint_precision + GeoMath::v3(target->data_x, target->data_y, target->data_z );
-	else
-		this->target.point_abs = homepoint + GeoMath::v3(target->data_x, target->data_y, target->data_z );
+		this->target.point_abs = homepoint + GeoMath::v3(target->data_x, target->data_y, target->data_z);
+		this->target_precision.point_abs = homepoint_precision + GeoMath::v3(target->data_x, target->data_y, target->data_z);
 		break;
 		
 	case juk_msg::juk_set_target_data_msg::system_offset_from_target:
 		this->target.point_abs = this->target.point_abs + GeoMath::v3(target->data_x, target->data_y, target->data_z);
+		this->target_precision.point_abs = this->target_precision.point_abs + GeoMath::v3(target->data_x, target->data_y, target->data_z);
 		break;	
 	}
 	
