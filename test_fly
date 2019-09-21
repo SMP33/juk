@@ -1,0 +1,1 @@
+ rostopic pub /JUK/TARGET juk_msg/juk_set_target_data_msg "{fly_mode: 4,system: 2, break_distance_mode: 1, data_x: 5.0, data_y: 0.0, data_z: 5.0, speed: 5.0, course: 0.0, acc: 0.2}" 

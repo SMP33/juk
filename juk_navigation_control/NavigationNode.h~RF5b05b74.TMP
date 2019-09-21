@@ -198,7 +198,7 @@ NavigationNode::NavigationNode(int argc, char** argv)
 }
 
 juk_msg::juk_control_dji_msg 
-NavigationNode::calculateControl(GeoMath::v3 offset, GeoMath::v3 current_velocity, double course_need, double course_current, double abs_speed, uint8_t ctrl_mode)
+	calculateControl(GeoMath::v3 offset, GeoMath::v3 current_velocity, double course_need, double course_current, double abs_speed, uint8_t ctrl_mode)
 {
 	juk_msg::juk_control_dji_msg ans;
 	ans.flag = 5;
@@ -522,7 +522,7 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 					if ((ros::Time::now() - aruco_land.uptime).toNSec() < aruco_timeout && SUB_STATE == SUB_STATES::LANDING_ARUCO_FLY)
 					SUB_STATE = SUB_STATES::LANDING_ARUCO_LAND;
 				
-				//std::cout << "SUB_STATE: " << SUB_STATE << std::endl;
+				std::cout << "SUB_STATE: " << SUB_STATE << std::endl;
 				
 				switch (SUB_STATE)
 				{
