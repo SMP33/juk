@@ -424,6 +424,57 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 				if (input->flight_status < 2)
 					set_homepoint_flag = true;
 				break;
+			case STATES::LANDING_ARUCO:
+				
+				if (!SUB_STATE || (ros::Time::now() - aruco_land.uptime).toNSec() >= 2000000000)
+					SUB_STATE = SUB_STATES::LANDING_ARUCO_FLY;
+				else
+					if ((ros::Time::now() - aruco_land.uptime).toNSec() < 2000000000 && SUB_STATE == SUB_STATES::LANDING_ARUCO_FLY)
+					SUB_STATE = SUB_STATES::LANDING_ARUCO_LAND;
+				
+				std::cout << "SUB_STATE: " << SUB_STATE << std::endl;
+				
+				switch (SUB_STATE)
+				{
+				case SUB_STATES::LANDING_ARUCO_FLY:
+					calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, juk_msg::juk_set_target_data_msg::mode_allow_break_distance);
+					output_dji.data_x = velocity_need.x;
+					output_dji.data_y = velocity_need.y;
+					output_dji.data_z = velocity_need.z;
+					output_dji.flag = ctrl_flag;
+		
+					output_dji.course = yaw_rate;
+					break;
+
+				case SUB_STATES::LANDING_ARUCO_LAND:
+					
+					sub_target.cruising_speed = 0.7;
+					
+					
+					if (aruco_land.offset.length_xy() > 0.1)
+					{
+						sub_target.course =aruco_land.course;
+						
+						calculateVelocity(current_target.cruising_speed, GeoMath::v3(aruco_land.offset.x, aruco_land.offset.y, 0), current_velocity, juk_msg::juk_set_target_data_msg::mode_allow_break_distance);
+					}
+					else
+					{
+						sub_target.point_abs = current_point_abs + GeoMath::v3(-aruco_land.offset.x, -aruco_land.offset.y, -1);
+						sub_target.accurancy = 0.1;
+						sub_target.course =aruco_land.course;
+						calculateVelocity(current_target.cruising_speed, GeoMath::v3(-aruco_land.offset.x, -aruco_land.offset.y, -aruco_land.offset.z-0.5), current_velocity, juk_msg::juk_set_target_data_msg::mode_allow_break_distance);
+					}
+					
+					output_dji.data_x = velocity_need.x;
+					output_dji.data_y = velocity_need.y;
+					output_dji.data_z = velocity_need.z;
+					output_dji.flag = ctrl_flag;
+		
+					output_dji.course = yaw_rate;
+					break;
+				default:
+					break;
+				}
 				
 			default:
 				break;
@@ -442,71 +493,13 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 			
 			break;
 			
-		case STATES::LANDING_ARUCO:
-				
-			if (!SUB_STATE || (ros::Time::now() - aruco_land.uptime).toNSec() >= 2000000000)
-				SUB_STATE = SUB_STATES::LANDING_ARUCO_FLY;
-			else
-				if ((ros::Time::now() - aruco_land.uptime).toNSec() < 2000000000 && SUB_STATE == SUB_STATES::LANDING_ARUCO_FLY)
-				SUB_STATE = SUB_STATES::LANDING_ARUCO_LAND;
-				
-			std::cout << "SUB_STATE: " << SUB_STATE << std::endl;
-				
-			switch (SUB_STATE)
-			{
-			case SUB_STATES::LANDING_ARUCO_FLY:
-				calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, juk_msg::juk_set_target_data_msg::mode_allow_break_distance);
-				output_dji.data_x = velocity_need.x;
-				output_dji.data_y = velocity_need.y;
-				output_dji.data_z = velocity_need.z;
-				std::cout << "@_0" << GeoMath::v3(output_dji.data_x, output_dji.data_y, output_dji.data_z) << std::endl;
-				
-				//std::cout << position_offset << std::endl;
-				output_dji.flag = ctrl_flag;
-		
-				output_dji.course = yaw_rate;
-				break;
-
-			case SUB_STATES::LANDING_ARUCO_LAND:
-					
-				sub_target.cruising_speed = 0.7;
-					
-					
-				if (aruco_land.offset.length_xy() > 0.1)
-				{
-					sub_target.course = aruco_land.course;
-						
-					calculateVelocity(current_target.cruising_speed, GeoMath::v3(aruco_land.offset.x, aruco_land.offset.y, 0), current_velocity, juk_msg::juk_set_target_data_msg::mode_allow_break_distance);
-				}
-				else
-				{
-					sub_target.point_abs = current_point_abs + GeoMath::v3(-aruco_land.offset.x, -aruco_land.offset.y, -1);
-					sub_target.accurancy = 0.1;
-					sub_target.course = aruco_land.course;
-					calculateVelocity(current_target.cruising_speed, GeoMath::v3(-aruco_land.offset.x, -aruco_land.offset.y, -aruco_land.offset.z - 0.5), current_velocity, juk_msg::juk_set_target_data_msg::mode_allow_break_distance);
-				}
-					
-				output_dji.data_x = velocity_need.x;
-				output_dji.data_y = velocity_need.y;
-				output_dji.data_z = velocity_need.z;
-				output_dji.flag = ctrl_flag;
-		
-				output_dji.course = yaw_rate;
-				break;
-			default:
-				break;
-			}
-			
-			std::cout << "@_2" << GeoMath::v3(output_dji.data_x, output_dji.data_y, output_dji.data_z) << std::endl;
-			break;
-			
 		default:
 			output_dji.data_x = 0;
 			output_dji.data_y = 0;
 			output_dji.data_z = 0;
 			output_dji.flag = 5;
 		
-			output_dji.course = 0;
+			output_dji.course = yaw_rate;
 			
 
 			break;
@@ -519,7 +512,7 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 		output_dji.data_y = 0;
 		output_dji.data_z = 0;
 	}
-	std::cout << "@_2" << GeoMath::v3(output_dji.data_x, output_dji.data_y, output_dji.data_z) << std::endl;
+	
 	position_data.dist_to_target = (current_point_abs - target.point_abs).length_xyz();
 	
 	stable_now = (position_data.dist_to_target <= target.accurancy);
@@ -536,9 +529,6 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 	{
 		position_data.stable_time = 0;
 	}
-	
-	
-	std::cout <<"@_3"<< GeoMath::v3(output_dji.data_x, output_dji.data_y, output_dji.data_z) << std::endl;
 	
 	stable_last = stable_now;
 	pub_dji_control.publish(output_dji);

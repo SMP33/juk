@@ -75,8 +75,8 @@ public:
 	ImageConverter()
 		: it_(nh_)
 	{
-		mrk_id = 0;
-		mrk_size = 0;
+		mrk_id = 10;
+		mrk_size = 180;
 		
 		action_sub = nh_.subscribe("JUK/ARUCO/ACTION",
 			1,
@@ -100,6 +100,13 @@ public:
 										 -5.337093535293237,
 										 -14.999621815152844,
 										 84.87525899538117);
+		
+		//image_sub_.shutdown();
+		image_sub_ = it_.subscribe("/main_camera/image_raw/throttled",
+			1,
+			&ImageConverter::imageCb,
+			this);
+		cout << "SUB" << endl;
 		
 //				camera_matrix_ = (cv::Mat1f(3, 3) <<   318.2541080773673 ,
 //													   0.0				 ,
@@ -133,20 +140,20 @@ public:
 		mrk_id = msg->id;
 		mrk_size = msg->size;
 		cout << mrk_id << " " << mrk_size << " " << (int)msg->action << endl;
-		if ((int)msg->action == 1)
-		{
-			image_sub_.shutdown();
-			image_sub_ = it_.subscribe("/main_camera/image_raw/throttled",
-				1,
-				&ImageConverter::imageCb,
-				this);
-			cout << "SUB" << endl;
-		}
-		else
-		{
-			image_sub_.shutdown();
-			cout << "UNSUB" << endl;
-		}
+//		if ((int)msg->action == 1)
+//		{
+//			image_sub_.shutdown();
+//			image_sub_ = it_.subscribe("/main_camera/image_raw/throttled",
+//				1,
+//				&ImageConverter::imageCb,
+//				this);
+//			cout << "SUB" << endl;
+//		}
+//		else
+//		{
+//			image_sub_.shutdown();
+//			cout << "UNSUB" << endl;
+//		}
 		
 		
 	}
@@ -209,8 +216,8 @@ public:
 				}
 				//cout << tvecs[0][2]<<endl;
 				juk_msg::juk_aruco_module_data data_msg;
-				data_msg.x = tvecs[0][0];
-				data_msg.y = tvecs[0][1];
+				data_msg.x = tvecs[0][1];
+				data_msg.y = tvecs[0][0];
 				data_msg.z = tvecs[0][2];
 				data_msg.course = course;
 				

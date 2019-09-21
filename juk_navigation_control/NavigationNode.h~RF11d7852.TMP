@@ -459,9 +459,8 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 				output_dji.data_x = velocity_need.x;
 				output_dji.data_y = velocity_need.y;
 				output_dji.data_z = velocity_need.z;
-				std::cout << "@_0" << GeoMath::v3(output_dji.data_x, output_dji.data_y, output_dji.data_z) << std::endl;
 				
-				//std::cout << position_offset << std::endl;
+				std::cout << position_offset << std::endl;
 				output_dji.flag = ctrl_flag;
 		
 				output_dji.course = yaw_rate;
@@ -497,9 +496,6 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 				break;
 			}
 			
-			std::cout << "@_2" << GeoMath::v3(output_dji.data_x, output_dji.data_y, output_dji.data_z) << std::endl;
-			break;
-			
 		default:
 			output_dji.data_x = 0;
 			output_dji.data_y = 0;
@@ -519,7 +515,7 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 		output_dji.data_y = 0;
 		output_dji.data_z = 0;
 	}
-	std::cout << "@_2" << GeoMath::v3(output_dji.data_x, output_dji.data_y, output_dji.data_z) << std::endl;
+	
 	position_data.dist_to_target = (current_point_abs - target.point_abs).length_xyz();
 	
 	stable_now = (position_data.dist_to_target <= target.accurancy);
@@ -538,7 +534,7 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 	}
 	
 	
-	std::cout <<"@_3"<< GeoMath::v3(output_dji.data_x, output_dji.data_y, output_dji.data_z) << std::endl;
+	std::cout << GeoMath::v3(output_dji.data_x, output_dji.data_y, output_dji.data_z) << std::endl;
 	
 	stable_last = stable_now;
 	pub_dji_control.publish(output_dji);
