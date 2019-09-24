@@ -33,30 +33,30 @@ using namespace std;
 ArgParser_Int params;
 
 Vehicle*   v;
-const int F_MODE = 1684; //числовое значение, которое соответствует f-позиции тумблера
+const int F_MODE = 1684;  //числовое значение, которое соответствует f-позиции тумблера
 auto default_ctrlFlag = Control::VERTICAL_VELOCITY | Control::HORIZONTAL_VELOCITY |
-     Control::YAW_RATE | Control::STABLE_ENABLE;
+     Control::YAW_RATE | Control::STABLE_ENABLE | Control::HORIZONTAL_GROUND;
 
 
-DJI::OSDK::Control::CtrlData            default_ctrlData(default_ctrlFlag,0,0,0,0); //параметры управления полетом  по умолчанию
-DJI::OSDK::Control::CtrlData            current_ctrlData(default_ctrlData);   //параметры управления полетом 
+DJI::OSDK::Control::CtrlData            default_ctrlData(default_ctrlFlag, 0, 0, 0, 0);  //параметры управления полетом  по умолчанию
+DJI::OSDK::Control::CtrlData            current_ctrlData(default_ctrlData);    //параметры управления полетом 
 
 
 //Телеметрия с A3
-DJI::OSDK::Telemetry::RCFullRawData  data_RC;	// соостояние всех элементов на пульте управления
-DJI::OSDK::Telemetry::Battery        data_Bat;	// информация о заряде батареи
-DJI::OSDK::Telemetry::GlobalPosition data_GPS;	// координаты GPS
-DJI::OSDK::Telemetry::Velocity       data_Velocity;	// текущая скорость
-DJI::OSDK::Telemetry::SDKInfo        data_Status;	// содержит информацию, кто управляет аппаратом
-double                               data_Course;	// курс
+DJI::OSDK::Telemetry::RCFullRawData  data_RC; 	// соостояние всех элементов на пульте управления
+DJI::OSDK::Telemetry::Battery        data_Bat; 	// информация о заряде батареи
+DJI::OSDK::Telemetry::GlobalPosition data_GPS; 	// координаты GPS
+DJI::OSDK::Telemetry::Velocity       data_Velocity; 	// текущая скорость
+DJI::OSDK::Telemetry::SDKInfo        data_Status; 	// содержит информацию, кто управляет аппаратом
+double                               data_Course; 	// курс
 
 juk_msg::juk_dji_gps_msg msg_GPS;
 juk_msg::juk_dji_device_status_msg msg_device_status;
 
-ros::Time last_ctrl_update_time; //время последнего переключения источника управления
+ros::Time last_ctrl_update_time;  //время последнего переключения источника управления
 
-int ctrl_flag = juk_msg::juk_control_dji_msg::flag_break; //режим управления
-RotationAngle iAngle, nAngle, cAngle;//углы подвеса при инициализации, требуемые, текущие в формате DJI SDK
+int ctrl_flag = juk_msg::juk_control_dji_msg::flag_break;  //режим управления
+RotationAngle iAngle, nAngle, cAngle; //углы подвеса при инициализации, требуемые, текущие в формате DJI SDK
 
 common_things::Time t;
 
@@ -65,16 +65,16 @@ struct
 	float yaw;
 	float pitch;
 	float roll;
-} initAngle,needAngle,currentAngle;//углы подвеса при инициализации, требуемые, текущие
+} initAngle, needAngle, currentAngle;//углы подвеса при инициализации, требуемые, текущие
 
 #ifdef NO_DJI_HARDWARE
 
 
 GeoMath::v3geo sim_pos(3.14 / 4, 3.14 / 3, 100);
 const int freq = 5;
-GeoMath::v3 vel( 2 / (double)freq,0,0);
+GeoMath::v3 vel(2 / (double)freq, 0, 0);
 #else
-const int freq = 30; //частота общения с A3
+const int freq = 30;  //частота общения с A3
 #endif // NO_DJI_HARDWARE
 
 int calc_gimbal_speed(int current, int need) //пропорциональный регулятор скорости
@@ -113,23 +113,23 @@ void gimbal_camera_callback(const juk_msg::juk_dji_camera_control_msg::ConstPtr&
 	angleData.duration = 3;
 	
 
-if (params.args["enable_camera_gimbal"]!=0)
-{
-		
-	switch (msg->action)
+	if (params.args["enable_camera_gimbal"] != 0)
 	{
-	case juk_msg::juk_dji_camera_control_msg::take_photo:
-		v->camera->shootPhoto();
-		cout << "Shoot Photo" << endl;
-		break;
-	case juk_msg::juk_dji_camera_control_msg::start_video:
-		v->camera->videoStart();
-		break;
-	case juk_msg::juk_dji_camera_control_msg::stop_video:
-		v->camera->videoStop();
-		break;
+		
+		switch (msg->action)
+		{
+		case juk_msg::juk_dji_camera_control_msg::take_photo:
+			v->camera->shootPhoto();
+			cout << "Shoot Photo" << endl;
+			break;
+		case juk_msg::juk_dji_camera_control_msg::start_video:
+			v->camera->videoStart();
+			break;
+		case juk_msg::juk_dji_camera_control_msg::stop_video:
+			v->camera->videoStop();
+			break;
+		}
 	}
-}
 	
 	nAngle.yaw = msg->yaw;
 	nAngle.pitch = msg->pitch;
@@ -157,20 +157,20 @@ void update_data() //обновление телеметрии с A3
 		v->subscribe->getValue<DJI::OSDK::Telemetry::TOPIC_STATUS_FLIGHT>();
 	
 	//пересчет квантернионов в углы эйлера
-	Telemetry::Quaternion quat = v->broadcast->getQuaternion();        //
-	double   q2sqr = quat.q2 * quat.q2;								   //
-	double   t0    = -2.0 * (q2sqr + quat.q3 * quat.q3) + 1.0;		   //
-	double   t1    = + 2.0 * (quat.q1 * quat.q2 + quat.q0 * quat.q3);  //
-	double   t2    = -2.0 * (quat.q1 * quat.q3 - quat.q0 * quat.q2);   //
-	double   t3    = + 2.0 * (quat.q2 * quat.q3 + quat.q0 * quat.q1);  //
-	double   t4    = -2.0 * (quat.q1 * quat.q1 + q2sqr) + 1.0;		   //
+	Telemetry::Quaternion quat = v->broadcast->getQuaternion();         //
+	double   q2sqr = quat.q2 * quat.q2; 								   //
+	double   t0    = -2.0 * (q2sqr + quat.q3 * quat.q3) + 1.0; 		   //
+	double   t1    = + 2.0 * (quat.q1 * quat.q2 + quat.q0 * quat.q3);   //
+	double   t2    = -2.0 * (quat.q1 * quat.q3 - quat.q0 * quat.q2);    //
+	double   t3    = + 2.0 * (quat.q2 * quat.q3 + quat.q0 * quat.q1);   //
+	double   t4    = -2.0 * (quat.q1 * quat.q1 + q2sqr) + 1.0; 		   //
 																	   //
-	t2 = (t2 > 1.0) ? 1.0 : t2;										   //
-	t2 = (t2 < -1.0) ? -1.0 : t2;									   //
-	data_Course = atan2(t1, t0); 									   //
+	t2 = (t2 > 1.0) ? 1.0 : t2; 										   //
+	t2 = (t2 < -1.0) ? -1.0 : t2; 									   //
+	data_Course = atan2(t1, t0);  									   //
 	
 	
-	msg_GPS.flight_status = data_FlightStatus;//состояние, в котором находится аппарат (на земле, в полете и т.д.)
+	msg_GPS.flight_status = data_FlightStatus; //состояние, в котором находится аппарат (на земле, в полете и т.д.)
 	
 	msg_GPS.lat = data_GPS.latitude;
 	msg_GPS.lng = data_GPS.longitude;
@@ -185,15 +185,15 @@ void update_data() //обновление телеметрии с A3
 
 	
 	
-	#else 
+#else 
 	msg_GPS.vx = vel.x / 6370000.0;
 	msg_GPS.vy = vel.y / 6370000.0;
 	msg_GPS.vz = 0;
 	
 	sim_pos = sim_pos + vel;
-	double r = (3.14 *57)* (double)(-10 + rand() % 20)/200;
+	double r = (3.14 * 57)* (double)(-10 + rand() % 20) / 200;
 	cout << "R: " << r << vel << endl;
-	cout<<sim_pos<<endl;
+	cout << sim_pos << endl;
 	vel = vel.rotateXY(r*GeoMath::CONST.DEG2RAD);
 	msg_GPS.lat = sim_pos.lat*GeoMath::CONST.DEG2RAD;
 	msg_GPS.lng = sim_pos.lng*GeoMath::CONST.DEG2RAD;
@@ -204,64 +204,69 @@ void update_data() //обновление телеметрии с A3
 	msg_GPS.course = 3.14;
 	
 	data_RC.lb2.mode = F_MODE;
-	#endif
-	const long max_mute_duration = 500000000;	//время ожидания обновления параметров управления
+#endif
+	const long max_mute_duration = 500000000; 	//время ожидания обновления параметров управления
 	
-	switch (data_RC.lb2.mode)	
+	switch(data_RC.lb2.mode)	
 	{
 	case F_MODE:	//управление передается автопилоту, если тумблер находится в позиции f
 		{
 			auto now = ros::Time::now();
-			#ifndef NO_DJI_HARDWARE
+#ifndef NO_DJI_HARDWARE
 			
 			if (data_Status.deviceStatus != 2)	//если управление идет не через SDK, забираем его
-			{
-				v->obtainCtrlAuthority();
-				msg_device_status.changeTime = now; 
-			}
+				{
+					v->obtainCtrlAuthority();
+					msg_device_status.changeTime = now; 
+				}
 			
 			if ((now - last_ctrl_update_time).toNSec() > max_mute_duration) //если параметры управления не былы обновлены допустимое время назад, тормозим
-			{
-				current_ctrlData = default_ctrlData;
-				v->control->emergencyBrake();
-			}
+				{
+					current_ctrlData = default_ctrlData;
+					v->control->emergencyBrake();
+				}
 				
 			else // иначе посылаем данные на А3 определенным способом в зависимости от выбранного режима
-			{
-				//cout << "M: " << ctrl_flag << endl;
-				switch (ctrl_flag)
 				{
-				case 5: //управляем напрямую скоростью
-					current_ctrlData.flag = Control::VERTICAL_VELOCITY | Control::HORIZONTAL_VELOCITY |
-											Control::YAW_RATE | Control::STABLE_ENABLE;
-					v->control->flightCtrl(current_ctrlData);
-					break;
-				case 7: //управляем скоростью по вертикали и задаем расстояние до цели по горизонтали
+					//cout << "M: " << ctrl_flag << endl;
+					switch(ctrl_flag)
+					{
+					case 5: //управляем напрямую скоростью
+						current_ctrlData.flag = Control::VERTICAL_VELOCITY | Control::HORIZONTAL_VELOCITY |
+												Control::YAW_RATE | Control::STABLE_ENABLE | Control::HORIZONTAL_GROUND;
+						v->control->flightCtrl(current_ctrlData);
+						break;
+					case 7: //управляем скоростью по вертикали и задаем расстояние до цели по горизонтали
+						current_ctrlData.flag = Control::VERTICAL_VELOCITY | Control::HORIZONTAL_POSITION |
+												Control::YAW_RATE | Control::STABLE_ENABLE | Control::HORIZONTAL_GROUND;
+						v->control->flightCtrl(current_ctrlData);
+						break;
+					case 8: //управляем скоростью по вертикали и задаем расстояние до цели по горизонтали (относительно тела аппарата)
 					current_ctrlData.flag = Control::VERTICAL_VELOCITY | Control::HORIZONTAL_POSITION |
-											Control::YAW_RATE | Control::STABLE_ENABLE;
-					v->control->flightCtrl(current_ctrlData);
-					break;
-				case 13: //экстренное торможение
-					v->control->emergencyBrake();
-					break;
-				default:
-					v->control->emergencyBrake();
-					break;
-				}			
+											Control::YAW_RATE | Control::STABLE_ENABLE | Control::HORIZONTAL_BODY;
+						v->control->flightCtrl(current_ctrlData);
+						break;
+					case 13: //экстренное торможение
+						v->control->emergencyBrake();
+						break;
+					default:
+						v->control->emergencyBrake();
+						break;
+					}			
 				
-			}
+				}
 			
 			
 			
 			Telemetry::Gimbal  gibmal;
-			#ifndef NO_GIMBAL
+#ifndef NO_GIMBAL
 			
-			gibmal = v->broadcast->getGimbal(); //информация о подвесе а дыннй момент
+			gibmal = v->broadcast->getGimbal();  //информация о подвесе а дыннй момент
 			cAngle.roll  = gibmal.roll * 10 - iAngle.roll;
 			cAngle.pitch = gibmal.pitch * 10 - iAngle.pitch;
 			cAngle.yaw   = gibmal.yaw * 10;
 		
-			DJI::OSDK::Gimbal::SpeedData gimbalSpeed; //скорость, которую необходимо задать подвесу
+			DJI::OSDK::Gimbal::SpeedData gimbalSpeed;  //скорость, которую необходимо задать подвесу
 		
 			nAngle.yaw = data_Course * 10*GeoMath::CONST.RAD2DEG;
 			
@@ -278,19 +283,19 @@ void update_data() //обновление телеметрии с A3
 			gimbalSpeed.reserved0 = 0;
 			gimbalSpeed.reserved1 = 0;
 		
-			v->gimbal->setSpeed(&gimbalSpeed); //задаем скорость подвесу
-			#endif
+			v->gimbal->setSpeed(&gimbalSpeed);  //задаем скорость подвесу
+#endif
 			
-			#endif
+#endif
 			
 			msg_device_status.authority = juk_msg::juk_dji_device_status_msg::CONTROL_BY_SDK;
 			msg_device_status.armed = (data_FlightStatus != 0);
 			
 			
-			#ifdef DEBUG_ROS
-			cout<<"TIME: "<<(now - last_ctrl_update_time).toNSec()<<endl;
-			cout << "DATA: " << current_ctrlData.x << " " << current_ctrlData.y << " " << current_ctrlData.z << " " <<ctrl_flag<< endl;
-			#endif // !DEBUG_ROS
+#ifdef DEBUG_ROS
+			cout << "TIME: " << (now - last_ctrl_update_time).toNSec() << endl;
+			cout << "DATA: " << current_ctrlData.x << " " << current_ctrlData.y << " " << current_ctrlData.z << " " << ctrl_flag << endl;
+#endif // !DEBUG_ROS
 			
 			
 		}
@@ -298,13 +303,13 @@ void update_data() //обновление телеметрии с A3
       
 	default:
 		{	
-			#ifndef NO_DJI_HARDWARE
+#ifndef NO_DJI_HARDWARE
 			if (data_Status.deviceStatus == 2) //если управление идет через SDK, отпускаем его
-			{
-				v->releaseCtrlAuthority(5000);
-				msg_device_status.changeTime = ros::Time::now(); 
-			}
-			#endif
+				{
+					v->releaseCtrlAuthority(5000);
+					msg_device_status.changeTime = ros::Time::now(); 
+				}
+#endif
 			
 			msg_device_status.authority = juk_msg::juk_dji_device_status_msg::CONTROL_BY_RC;
 			msg_device_status.changeTime = ros::Time::now();
@@ -327,7 +332,7 @@ int main(int argc, char *argv[])
 	std::cout << c(32, "@Parameters JUK_DJI_CORE_NODE: ") << std::endl;
 	for (auto arg : params.args)
 	{
-		std::cout << c(32, "~~") << arg.first << ": " << c(32,arg.second) << std::endl ;
+		std::cout << c(32, "~~") << arg.first << ": " << c(32, arg.second) << std::endl;
 	}
 	std::cout << std::endl;
 	
@@ -362,7 +367,7 @@ int main(int argc, char *argv[])
 	LinuxSetup ls(argc, argv); 
 	v = ls.getVehicle();
 
-	auto st=v->broadcast->getStatus();
+	auto st = v->broadcast->getStatus();
 
 	//===============Подписываемся на нужные топики==========//
 	ACK::ErrorCode subscribeStatus;

@@ -151,14 +151,14 @@ private:
 void 
 NavigationNode::init_handlers()
 {
-	state_handlers[STATES::IDLE] =[this]()->juk_msg::juk_control_dji_msg
+	state_handlers[STATES::IDLE] = [this]()->juk_msg::juk_control_dji_msg
 	{
 		juk_msg::juk_control_dji_msg msg ;
 		msg.flag = 5 ;
 		return msg ;
 	};
 	
-	state_handlers[STATES::FLY_SIMPLE] = [this]()->juk_msg::juk_control_dji_msg
+	state_handlers[STATES::FLY_SIMPLE] =[this]()->juk_msg::juk_control_dji_msg
 	{
 		GeoMath::v3 position_offset = current_target.point_abs - current_point_abs ;
 	
@@ -179,8 +179,7 @@ NavigationNode::init_handlers()
 					if(!SUB_STATE)
 				SUB_STATE = SUB_STATES::FLY_SAFE_UP ;
 		
-		juk_msg::juk_control_dji_msg msg ;
-		
+		juk_msg::juk_control_dji_msg msg;
 		
 			switch(SUB_STATE)
 	{
@@ -192,92 +191,39 @@ NavigationNode::init_handlers()
 		sub_target.point_abs = GeoMath::v3geo(current_point_abs.lat, current_point_abs.lng, params.args["safe_alt"] + homepoint.alt) ;
 		GeoMath::v3 sub_position_offset =  sub_target.point_abs - current_point_abs ;
 		msg = calculateControl(sub_position_offset,
-		current_velocity,
-		current_target.course,
-		position_data.course,
-		current_target.cruising_speed,
-		juk_msg::juk_set_target_data_msg::mode_not_break_distance) ;
-//calculateVelocity(current_target.cruising_speed, sub_position_offset, current_velocity, juk_msg::juk_set_target_data_msg::mode_not_break_distance) ;
+			current_velocity,
+			current_target.course,
+			position_data.course,
+			current_target.cruising_speed,
+			juk_msg::juk_set_target_data_msg::mode_not_break_distance);
+		//calculateVelocity(current_target.cruising_speed, sub_position_offset, current_velocity, juk_msg::juk_set_target_data_msg::mode_not_break_distance) ;
 	}
 	else
 	{
 		sub_target = current_target ;
 		sub_target.point_abs.alt = params.args["safe_alt"] + homepoint.alt ;
 		GeoMath::v3 sub_position_offset =  sub_target.point_abs - current_point_abs ;
-		msg = calculateControl(sub_position_offset,
-		current_velocity,
-		current_target.course,
-		position_data.course,
-		current_target.cruising_speed,
-		juk_msg::juk_set_target_data_msg::mode_not_break_distance) ;
-//calculateVelocity(current_target.cruising_speed, sub_position_offset, current_velocity, ctrl_mode) ;
+		calculateVelocity(current_target.cruising_speed, sub_position_offset, current_velocity, ctrl_mode) ;
 	}
 				
 		
-		if (position_offset.length_xy() < 2)
-		{
-			SUB_STATE = SUB_STATES::FLY_SAFE_CENTER;
-		
-			GeoMath::v3 position_offset = current_target.point_abs - current_point_abs;
-		
-			msg = calculateControl(position_offset,
-				current_velocity,
-				current_target.course,
-				position_data.course,
-				current_target.cruising_speed,
-				ctrl_mode);
-			//calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, ctrl_mode);
-		}
-
-		break;
-		
-	case SUB_STATES::FLY_SAFE_CENTER :
-		if (position_offset.length_xy() > 5)
-		{
-			SUB_STATE = SUB_STATES::FLY_SAFE_CENTER;
-			break;
-		}
-			
-		if (position_offset.length_xy() > 1)
-		{
-			
-			msg = calculateControl( GeoMath::v3(position_offset.x, position_offset.y, 0),
-				current_velocity,
-				current_target.course,
-				position_data.course,
-				current_target.cruising_speed,
-				ctrl_mode);
-		}
-		else
-		{
-			msg = calculateControl(position_offset,
-				current_velocity,
-				current_target.course,
-				position_data.course,
-				current_target.cruising_speed,
-				ctrl_mode);
-		}
-				
-		if (position_offset.length_xyz() < current_target.accurancy)
-		{
-			STATE = STATES::FLY_SIMPLE;
-			SUB_STATE = 0;					
-		}
-				
-		break ;
+	if(position_offset.length_xy() < 2)
+	{
+		SUB_STATE = SUB_STATES::FLY_SAFE_CENTER ;
+		calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, ctrl_mode) ;
+	}
 			
 default :
 	SUB_STATE = 0 ;
 	break ;
 	} ;
-		return msg ;
+	
 	};
-}
 
-NavigationNode::NavigationNode(int argc, char** argv)
+	NavigationNode::NavigationNode(int argc, char** argv)
 	{
 	
-		params.args["safe_alt"] = 20 ;
+		params.args["safe_height"] = 20 ;
 		params.args["enable_emlid"] = 0 ;
 		params.args["gear_height"] = 2 ;
 		params.args["aruco_marker_id"] = 10 ;
@@ -542,62 +488,62 @@ NavigationNode::NavigationNode(int argc, char** argv)
 			break ;
 		
 		case STATES::FLY_SAFE :
-		output_dji = state_handlers[STATES::FLY_SAFE]();
-//			if(!SUB_STATE)
-//				SUB_STATE = SUB_STATES::FLY_SAFE_UP ;
-//			
-//			switch(SUB_STATE)
-//	{
-//		case SUB_STATES::FLY_SAFE_UP :
-//				
-//			if(current_point_abs.alt - homepoint.alt < params.args["safe_alt"])
-//	{
-//		sub_target = current_target ;
-//		sub_target.point_abs = GeoMath::v3geo(current_point_abs.lat, current_point_abs.lng, params.args["safe_alt"] + homepoint.alt) ;
-//		GeoMath::v3 sub_position_offset =  sub_target.point_abs - current_point_abs ;
-//		calculateVelocity(current_target.cruising_speed, sub_position_offset, current_velocity, juk_msg::juk_set_target_data_msg::mode_not_break_distance) ;
-//	}
-//	else
-//	{
-//		sub_target = current_target ;
-//		sub_target.point_abs.alt = params.args["safe_alt"] + homepoint.alt ;
-//		GeoMath::v3 sub_position_offset =  sub_target.point_abs - current_point_abs ;
-//		calculateVelocity(current_target.cruising_speed, sub_position_offset, current_velocity, ctrl_mode) ;
-//	}
-//				
-//	if(position_offset.length_xy() < 2)
-//	{
-//		SUB_STATE = SUB_STATES::FLY_SAFE_CENTER ;
-//		calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, ctrl_mode) ;
-//	}
-//				
-//	break ;
-//case SUB_STATES::FLY_SAFE_CENTER :
-//				
-//	if(position_offset.length_xy() > 1)
-//		calculateVelocity(current_target.cruising_speed, GeoMath::v3(position_offset.x, position_offset.y, 0), current_velocity, ctrl_mode) ;
-//	else
-//		calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, ctrl_mode) ;
-//				
-//	if(position_offset.length_xyz() < current_target.accurancy)
-//	{
-//		STATE = STATES::FLY_SIMPLE ;
-//		SUB_STATE = 0 ;					
-//	}
-//				
-//	break ;
-//default :
-//	break ;
-//	}
-//			
-//			
-//	output_dji.data_x = velocity_need.x ;
-//	output_dji.data_y = velocity_need.y ;
-//	output_dji.data_z = velocity_need.z ;
-//	output_dji.flag = ctrl_flag ;
-//		
-//	output_dji.course = yaw_rate ;
-//			
+			
+			if(!SUB_STATE)
+				SUB_STATE = SUB_STATES::FLY_SAFE_UP ;
+			
+			switch(SUB_STATE)
+	{
+		case SUB_STATES::FLY_SAFE_UP :
+				
+			if(current_point_abs.alt - homepoint.alt < params.args["safe_alt"])
+	{
+		sub_target = current_target ;
+		sub_target.point_abs = GeoMath::v3geo(current_point_abs.lat, current_point_abs.lng, params.args["safe_alt"] + homepoint.alt) ;
+		GeoMath::v3 sub_position_offset =  sub_target.point_abs - current_point_abs ;
+		calculateVelocity(current_target.cruising_speed, sub_position_offset, current_velocity, juk_msg::juk_set_target_data_msg::mode_not_break_distance) ;
+	}
+	else
+	{
+		sub_target = current_target ;
+		sub_target.point_abs.alt = params.args["safe_alt"] + homepoint.alt ;
+		GeoMath::v3 sub_position_offset =  sub_target.point_abs - current_point_abs ;
+		calculateVelocity(current_target.cruising_speed, sub_position_offset, current_velocity, ctrl_mode) ;
+	}
+				
+	if(position_offset.length_xy() < 2)
+	{
+		SUB_STATE = SUB_STATES::FLY_SAFE_CENTER ;
+		calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, ctrl_mode) ;
+	}
+				
+	break ;
+case SUB_STATES::FLY_SAFE_CENTER :
+				
+	if(position_offset.length_xy() > 1)
+		calculateVelocity(current_target.cruising_speed, GeoMath::v3(position_offset.x, position_offset.y, 0), current_velocity, ctrl_mode) ;
+	else
+		calculateVelocity(current_target.cruising_speed, position_offset, current_velocity, ctrl_mode) ;
+				
+	if(position_offset.length_xyz() < current_target.accurancy)
+	{
+		STATE = STATES::FLY_SIMPLE ;
+		SUB_STATE = 0 ;					
+	}
+				
+	break ;
+default :
+	break ;
+	}
+			
+			
+	output_dji.data_x = velocity_need.x ;
+	output_dji.data_y = velocity_need.y ;
+	output_dji.data_z = velocity_need.z ;
+	output_dji.flag = ctrl_flag ;
+		
+	output_dji.course = yaw_rate ;
+			
 	break ;
 case STATES::LANDING_SIMPLE :
 	if(!SUB_STATE)

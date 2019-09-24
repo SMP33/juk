@@ -182,12 +182,14 @@ NavigationNode::init_handlers()
 		juk_msg::juk_control_dji_msg msg ;
 		
 		
+		std::cout << SUB_STATE << std::endl;
 			switch(SUB_STATE)
 	{
 		case SUB_STATES::FLY_SAFE_UP :
 				
 			if(current_point_abs.alt - homepoint.alt < params.args["safe_alt"])
 	{
+		std::cout << "LOW" << std::endl;
 		sub_target = current_target ;
 		sub_target.point_abs = GeoMath::v3geo(current_point_abs.lat, current_point_abs.lng, params.args["safe_alt"] + homepoint.alt) ;
 		GeoMath::v3 sub_position_offset =  sub_target.point_abs - current_point_abs ;
@@ -201,6 +203,7 @@ NavigationNode::init_handlers()
 	}
 	else
 	{
+		std::cout << params.args["safe_alt"]<<"HIGHT" << std::endl;
 		sub_target = current_target ;
 		sub_target.point_abs.alt = params.args["safe_alt"] + homepoint.alt ;
 		GeoMath::v3 sub_position_offset =  sub_target.point_abs - current_point_abs ;
@@ -277,7 +280,7 @@ default :
 NavigationNode::NavigationNode(int argc, char** argv)
 	{
 	
-		params.args["safe_alt"] = 20 ;
+		params.args["safe_height"] = 20 ;
 		params.args["enable_emlid"] = 0 ;
 		params.args["gear_height"] = 2 ;
 		params.args["aruco_marker_id"] = 10 ;
