@@ -41,38 +41,40 @@ public:
 	{  
 		NOTHING             = 0,  ///< подсостояние по умолчанию
 		
-		FLY_SAFE_UP         = 201, ///< подсостояние FLY_SAFE - подъем на безопасную высоту
-		FLY_SAFE_CENTER     = 202, ///< подсостояние FLY_SAFE - полет к точке по прямой, если аппарат находится над точкой в коридоре радиусом 2м
+		FLY_SAFE_UP         = 201,
+		FLY_SAFE_CENTER     = 202,
 		
-		LANDING_SIMPLE_FLY  = 301, ///< подсостояние LANDING_SIMPLE - полет к точке по прямой
-		LANDING_SIMPLE_LAND = 302, ///< подсостояние LANDING_SIMPLE - посадка в указанной точке
+		LANDING_SIMPLE_FLY  = 301,
+		LANDING_SIMPLE_LAND = 302,
 			
-		LANDING_ARUCO_FLY   = 401, ///< подсостояние LANDING_ARUCO - полет к точке по прямой
-		LANDING_ARUCO_LAND  = 402, ///< подсостояние LANDING_ARUCO - полет из указанной точки к каркеру 
+		LANDING_ARUCO_FLY   = 401,
+		LANDING_ARUCO_LAND  = 402,
 	};
 	
 	enum ACTIONS
 	{
-		SET_HOMEPOINT = 1  ///< установка домашней точки
+		SET_HOMEPOINT = 1
 	};
 	
+	
+
+
+	
 	NavigationNode(int argc, char** argv);
+	
+
+	
 
 private:
-	ArgParser_Int params; ///< парсер параметров запуска
-	const int max_precision_uptime = 1000000000; ///< максимальное время ожидания обновления прецизионных координат
-	void gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input); ///< обработчик события получения данных GPS A3
-	void precision_gps_callback(const juk_msg::reach_msg::ConstPtr& in); ///< обработчик события получения прецизионных данных GPS
-	void set_target_callback(const juk_msg::juk_set_target_data_msg::ConstPtr& input); ///< обработчик события установки новой целевой точки
-	void action_process_callback(const juk_msg::juk_navigation_actions_msg::ConstPtr& input); ///< обработчик события совершения действия
-	void aruco_callback(const juk_msg::juk_aruco_module_data::ConstPtr& input); ///< обработчик события получения данных о положении ArUco маркера
+	ArgParser_Int params;
+	const int max_precision_uptime = 1000000000;
+	void gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input);
+	void precision_gps_callback(const juk_msg::reach_msg::ConstPtr& in);
+	void set_target_callback(const juk_msg::juk_set_target_data_msg::ConstPtr& input);
+	void action_process_callback(const juk_msg::juk_navigation_actions_msg::ConstPtr& input);
+	void aruco_callback(const juk_msg::juk_aruco_module_data::ConstPtr& input);
 	
-	juk_msg::juk_control_dji_msg calculateControl(GeoMath::v3 offset,
-		GeoMath::v3 current_velocity,
-		double course_need,
-		double course_current,
-		double speed,
-		uint8_t ctrl_mode); 
+	juk_msg::juk_control_dji_msg calculateControl(GeoMath::v3 offset, GeoMath::v3 current_velocity, double course_need, double course_current, double speed, uint8_t ctrl_mode);
 	
 	
 	ros::Time node_start_time;
@@ -149,7 +151,7 @@ private:
 void 
 NavigationNode::init_handlers()
 {
-
+	
 	state_handlers[STATES::IDLE] =[this]()->juk_msg::juk_control_dji_msg
 	{
 		juk_msg::juk_control_dji_msg msg ;
@@ -233,6 +235,12 @@ NavigationNode::init_handlers()
 		if (position_offset.length_xy() > 5)
 		{
 			SUB_STATE = SUB_STATES::FLY_SAFE_CENTER;
+			
+			switch (this->SUB_STATE)
+			{
+			default:
+				break;
+			}
 			break;
 		}
 			
