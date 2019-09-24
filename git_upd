@@ -1,4 +1,0 @@
-git add *
-git commit -m "upd"
-git config credential.helper store
-git push
