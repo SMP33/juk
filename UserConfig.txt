@@ -1,4 +1,0 @@
-app_id : 1067610
-app_key : b52ab8fdd2d5dd0cce798171cb3581355ab8f64df5d8b4f5d64b87fa0fce0296
-device : /dev/custom/DJI_CONTROLLER
-baudrate : 230400
