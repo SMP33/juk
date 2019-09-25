@@ -16,9 +16,14 @@ include_directories(${GeoMath_INCLUDE_DIRS})
 find_package(juk_msg REQUIRED)
 include_directories( ${juk_msg_INCLUDE_DIRS})
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)
 
-add_executable(juk_navigation_control juk_navigation_control.cpp)
+FILE(GLOB SOURCE_CPP ../include/*.cpp *.cpp)
 
-target_include_directories ( juk_navigation_control PUBLIC /home/ubuntu/catkin_ws/devel/include/juk_msg)
+add_executable(juk_navigation_control  
+${SOURCE_CPP}
+)
+
+#target_include_directories ( juk_navigation_control PUBLIC /home/ubuntu/catkin_ws/devel/include/juk_msg)
 target_link_libraries(juk_navigation_control /usr/local/lib/libGeoMath_lib.a ${roscpp_LIBRARIES} "${LIBRARIES_FROM_REFERENCES}")
 
