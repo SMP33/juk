@@ -322,9 +322,11 @@ void update_data() //обновление телеметрии с A3
 }
 int main(int argc, char *argv[])
 {
-	DJI::OSDK::Log::instance().disableStatusLogging();
+	
 	DJI::OSDK::Log::instance().disableDebugLogging();
-	DJI::OSDK::Log::instance().disableErrorLogging();
+	
+	DJI::OSDK::Log::instance().enableStatusLogging();
+	DJI::OSDK::Log::instance().enableErrorLogging();
 	
 	params.args["enable_camera_gimbal"] = 1;
 	

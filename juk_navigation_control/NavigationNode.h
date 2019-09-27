@@ -138,6 +138,8 @@ private:
 	
 	int STATE;   ///< текущее состояние
 	int SUB_STATE;   ///<  текущее подсостояние
+	
+	int flight_status;  ///< статус полета
 		
 	float yaw_rate;   ///< текущая угловая скорость
 	

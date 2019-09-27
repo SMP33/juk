@@ -16,13 +16,6 @@
 using namespace cv;
 using namespace std;
 
-static const std::string OPENCV_WINDOW = "Image window";
-
-
-
-
-
-
 Vec3d rotationMatrixToEulerAngles(Mat &R)
 {
      
@@ -65,6 +58,8 @@ class ImageConverter
 	image_transport::Publisher image_pub_gray;
 	image_transport::Publisher image_pub_canny;
 	
+	ros::Time last_cb;
+	
 	cv::Mat camera_matrix_;
 	cv::Mat dist_coeffs_;
 	
@@ -75,18 +70,21 @@ public:
 	ImageConverter()
 		: it_(nh_)
 	{
+		last_cb = ros::Time::now();
 		mrk_id = 10;
 		mrk_size = 180;
+		
 		
 		action_sub = nh_.subscribe("JUK/ARUCO/ACTION",
 			1,
 			&ImageConverter::actionCb,
 			this);
 
-		image_pub_img = it_.advertise("JUK/ARUCO/IMG", 1);
-		image_pub_gray = it_.advertise("JUK/ARUCO/GRAY", 1);
-		image_pub_canny = it_.advertise("JUK/ARUCO/CANNY", 1);
+//		image_pub_img = it_.advertise("JUK/ARUCO/IMG", 1);
+//		image_pub_gray = it_.advertise("JUK/ARUCO/GRAY", 1);
+//		image_pub_canny = it_.advertise("JUK/ARUCO/CANNY", 1);
 		data_pub = nh_.advertise<juk_msg::juk_aruco_module_data>("JUK/ARUCO/DATA", 1);
+		image_pub_img = it_.advertise("JUK/ARUCO/IMG", 1);
 		
 		camera_matrix_ = (cv::Mat1f(3, 3) << 217.9576883804214, 0., 139.41597272515813,
 									 0., 217.0956590832075, 123.53402954618754,
@@ -101,32 +99,12 @@ public:
 										 -14.999621815152844,
 										 84.87525899538117);
 		
-		//image_sub_.shutdown();
 		image_sub_ = it_.subscribe("/main_camera/image_raw/throttled",
 			1,
 			&ImageConverter::imageCb,
 			this);
-		cout << "SUB" << endl;
+		cout << "SUB ARUCO" << endl;
 		
-//				camera_matrix_ = (cv::Mat1f(3, 3) <<   318.2541080773673 ,
-//													   0.0				 ,
-//													   305.96305703665945,
-//													   0.0				 ,
-//													   318.6447775226269 ,
-//													   219.22853938154097,
-//													   0.0				 ,
-//													   0.0				 ,
-//													   1.0);
-//	
-//		dist_coeffs_ = (cv::Mat1f(8, 1) << -5.163903880082516,
-//										   8.478007913776043,
-//										   0.0001618818246359903,
-//										   -0.001434442973040648,
-//										   1.2663807298936525,
-//										   -4.8256925147875425,
-//										   6.686092517282609,
-//										   4.397654490871483
-//										  );
 
 	}
 
@@ -137,34 +115,23 @@ public:
 	void actionCb(const juk_msg::juk_aruco_module_action::ConstPtr& msg)
 	{
 		
-		mrk_id = msg->id;
-		mrk_size = msg->size;
-		cout << mrk_id << " " << mrk_size << " " << (int)msg->action << endl;
-//		if ((int)msg->action == 1)
-//		{
-//			image_sub_.shutdown();
-//			image_sub_ = it_.subscribe("/main_camera/image_raw/throttled",
-//				1,
-//				&ImageConverter::imageCb,
-//				this);
-//			cout << "SUB" << endl;
-//		}
-//		else
-//		{
-//			image_sub_.shutdown();
-//			cout << "UNSUB" << endl;
-//		}
-		
+//		mrk_id = msg->id;
+//		mrk_size = msg->size;
+//		cout << mrk_id << " " << mrk_size << " " << (int)msg->action << endl;
 		
 	}
 
 	void imageCb(const sensor_msgs::ImageConstPtr& msg)
-	{
+	{		
+		
+		auto t1 = ros::Time::now();
+		
 		cv_bridge::CvImagePtr cv_ptr;
 		cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);		
 		Mat img = cv_ptr->image.clone();
 
 		int rotation_flag = 1;
+		
 		switch (rotation_flag)
 		{
 		case 0:
@@ -221,12 +188,14 @@ public:
 				data_msg.z = tvecs[0][2];
 				data_msg.course = course;
 				
+				
+				//cout<<"x: "<<data_msg.x<<" y: "<<data_msg.y<<" z: "<<data_msg.z<<endl;
 				data_pub.publish(data_msg);
 				
 			}
 		}
 		
-		resize(img, img, Size(), 3, 3);		
+		//resize(img, img, Size(), 3, 3);		
 		std_msgs::Header header; 
 		header.stamp = ros::Time::now();
 		
@@ -234,6 +203,10 @@ public:
 		
 		cv_bridge::CvImage out_img = cv_bridge::CvImage(header, sensor_msgs::image_encodings::TYPE_8UC3, img);
 		image_pub_img.publish(out_img.toImageMsg());
+		
+		auto t2 = ros::Time::now();
+		
+		//cout <<"Delay: "<< t2 - t1 << endl;
 	}
 };
 

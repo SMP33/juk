@@ -20,9 +20,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)
 
 FILE(GLOB SOURCE_CPP ../include/*.cpp *.cpp)
 
-add_executable(juk_navigation_control  
+add_executable(juk_navigation_control
 ${SOURCE_CPP}
-)
+NavigationNode.h)
 
 #target_include_directories ( juk_navigation_control PUBLIC /home/ubuntu/catkin_ws/devel/include/juk_msg)
 target_link_libraries(juk_navigation_control /usr/local/lib/libGeoMath_lib.a ${roscpp_LIBRARIES} "${LIBRARIES_FROM_REFERENCES}")
