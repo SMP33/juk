@@ -8,6 +8,7 @@
 #include <juk_msg/juk_position_data_msg.h>
 #include <juk_msg/juk_set_target_data_msg.h>
 #include <juk_msg/reach_msg.h>
+#include <juk_msg/juk_aruco_module_data.h>
 
 
 
@@ -34,6 +35,7 @@ int main(int argc, char *argv[])
 	SimpleSub<juk_msg::juk_set_target_data_msg> target(&nh, "JUK/TARGET", start_time);
 	
 	SimpleSub<juk_msg::reach_msg> reach(&nh, "REACH_EMLID_DATA", start_time);
+	SimpleSub<juk_msg::juk_aruco_module_data> aruco(&nh, "JUK/ARUCO/DATA", start_time);
 	
 	ofstream log_file;
 	log_file.open("last.log");
@@ -92,6 +94,12 @@ int main(int argc, char *argv[])
 		reach.add_str("time_m", reach.data.time_m, true);
 		reach.add_str("time_s", reach.data.time_s, false);
 		
+		aruco.reset_str();
+		aruco.add_str("x", aruco.data.x, true);
+		aruco.add_str("y", aruco.data.y, true);
+		aruco.add_str("z", aruco.data.z, true);
+		aruco.add_str("course", aruco.data.course, false);
+		
 		str.flags(std::ios::fixed);
 		str.precision(10);
 		
@@ -116,8 +124,11 @@ int main(int argc, char *argv[])
 		str << control_dji.get_full_str() << "," << endl;
 		control_dji.clean_upd();
 		
-		str << reach.get_full_str();
+		str << reach.get_full_str() << "," << endl;
 		reach.clean_upd();
+		
+		str << aruco.get_full_str();
+		aruco.clean_upd();
 		
 		str << "}\n}" << endl;
 		

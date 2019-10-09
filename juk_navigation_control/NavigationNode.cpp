@@ -168,9 +168,6 @@ case SUB_STATES::FLY_SAFE_CENTER :
 		default :
 			break ;
 		}
-			
-			
-
 	};
 	
 	state_handlers[STATES::LANDING_ARUCO] =[this]()->juk_msg::juk_control_dji_msg
@@ -202,7 +199,9 @@ case SUB_STATES::FLY_SAFE_CENTER :
 			if (flight_status < 2)
 				set_homepoint_flag = true;
 			
-			if (aruco_land.offset.length_xy() > 0.1)
+			//std::cout << aruco_land.offset << std::endl;
+			
+			if(aruco_land.offset.length_xy() > abs(aruco_land.offset.z)/10+0.1)
 			{
 				target.course = aruco_land.course;
 				target_precision.course = aruco_land.course;
@@ -213,20 +212,11 @@ case SUB_STATES::FLY_SAFE_CENTER :
 				GeoMath::v2 cC(cos(current_target.course*GeoMath::CONST.DEG2RAD), sin(current_target.course*GeoMath::CONST.DEG2RAD));
 				GeoMath::v2 cN(cos(position_data.course*GeoMath::CONST.DEG2RAD), sin(position_data.course*GeoMath::CONST.DEG2RAD));
 
-				msg.course = cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG / 2;
+				msg.course = 0;
+				//msg.course = cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG / 2;
 				
-				if (abs(msg.course) < 2)
-				{
-					msg.data_x = aruco_land.offset.x;
-					msg.data_y = -aruco_land.offset.y;
-					msg.data_z = 0;
-				}
-				else
-				{
-					msg.data_x = 0;
-					msg.data_y = 0;
-					msg.data_z = 0;
-				}
+				msg.data_x = aruco_land.offset.x;
+				msg.data_y = -aruco_land.offset.y;
 				
 				msg.flag=8;
 				return msg;
@@ -243,13 +233,18 @@ case SUB_STATES::FLY_SAFE_CENTER :
 				GeoMath::v2 cC(cos(current_target.course*GeoMath::CONST.DEG2RAD), sin(current_target.course*GeoMath::CONST.DEG2RAD));
 				GeoMath::v2 cN(cos(position_data.course*GeoMath::CONST.DEG2RAD), sin(position_data.course*GeoMath::CONST.DEG2RAD));
 
+				
+				msg.data_x = aruco_land.offset.x;
+				msg.data_y = -aruco_land.offset.y;
 				msg.course = cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG / 2;
 				
 				if (abs(msg.course) < 2)
 				{
-					msg.data_x = aruco_land.offset.x;
-					msg.data_y = -aruco_land.offset.y;
-					msg.data_z = aruco_land.offset.z-0.3;
+					
+					if (aruco_land.offset.z>2.0)
+						msg.data_z = -0.5;
+					else
+						msg.data_z = -0.3;
 				}
 				else
 				{
