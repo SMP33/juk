@@ -9,6 +9,8 @@ juk.sln
 *.user
 *last.log
 
+git_upd
+
 #build directories
 bin/
 build/
