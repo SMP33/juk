@@ -325,8 +325,8 @@ int main(int argc, char *argv[])
 	
 	DJI::OSDK::Log::instance().disableDebugLogging();
 	
-	DJI::OSDK::Log::instance().enableStatusLogging();
-	DJI::OSDK::Log::instance().enableErrorLogging();
+	DJI::OSDK::Log::instance().disableStatusLogging();
+	DJI::OSDK::Log::instance().disableErrorLogging();
 	
 	params.args["enable_camera_gimbal"] = 1;
 	
