@@ -3,8 +3,11 @@
 CodeDB/
 VisualGDB/
 VisualGDBCache/
+
 juk.sln
-juk.vgdbcmake
+*.vgdbcmake
+*.user
+*last.log
 
 #build directories
 bin/
