@@ -16,12 +16,14 @@
 using namespace cv;
 using namespace std;
 
+#define ROTATE_
+
 Vec3d rotationMatrixToEulerAngles(Mat &R)
 {
      
 	float sy = sqrt(R.at<double>(0, 0) * R.at<double>(0, 0) +  R.at<double>(1, 0) * R.at<double>(1, 0));
  
-	bool singular = sy < 1e-6;   // If
+	bool singular = sy < 1e-6;    // If
  
 	float x, y, z;
 	if (!singular)
@@ -127,7 +129,7 @@ public:
 
 		int rotation_flag = 1;
 		
-				vector<int> markerIds;
+		vector<int> markerIds;
 		vector<vector<Point2f>> markerCorners, rejectedCandidates;
 		Ptr<aruco::Dictionary> markerDictionary = aruco::getPredefinedDictionary(aruco::PREDEFINED_DICTIONARY_NAME::DICT_4X4_1000);
 		std_msgs::Header header; 
@@ -177,9 +179,13 @@ public:
 			R = R.t();
 			
 			Mat T = -R * tvec;
+			
+#ifdef ROTATE_
+			Vec3d v3d(T);
+#else			Vec3d v3d(tvec);
+#endif // ROTATE_
 
 			
-			Vec3d v3d(T);
 			GeoMath::v3 offset(v3d[0], v3d[1], v3d[2]);
 			
 			course_all.push_back(course);
@@ -190,33 +196,35 @@ public:
 		
 		if (marker_count > 0 && marker_count == coordinates_all.size())
 		{
-			double course = 0;
+			double course = course_all[0];
 			GeoMath::v3 offset;
 			
 			for (size_t i = 0; i < marker_count; i++)
 			{
-				course = course + course_all[i];
 				offset = offset + coordinates_all[i];
 			}
-			
-			course = course / (double)marker_count;
 			offset = offset / (double)marker_count;
 			
-			offset = offset.rotateXY(-course);	
+			offset.y = -offset.y;
+			
+			offset = offset.rotateXY(course);	
 			
 			GeoMath::v3 now_abs_mrk_pos(offset);
 						
-			if ((now_abs_mrk_pos - last_abs_mrk_pos).length_xyz()<150)
+			if ((now_abs_mrk_pos - last_abs_mrk_pos).length_xyz() < 150)
 			{
 				juk_msg::juk_aruco_module_data data_msg;
-				
-				data_msg.x = offset.y;
+#ifdef ROTATE_
+				data_msg.x = -offset.y;
 				data_msg.y = -offset.x;
 				data_msg.z = offset.z;
+#else				data_msg.x = offset.y;
+				data_msg.y = offset.x;
+				data_msg.z = offset.z;
+#endif // ROTATE_
+				data_msg.course = course;
 				
-				data_msg.course = course + angle*GeoMath::CONST.DEG2RAD;
-				
-				//cout << "ARUCO: \n\t" << "x: " << data_msg.x << " y: " << data_msg.y << " z: " << data_msg.z << " c: " << course*GeoMath::CONST.RAD2DEG <<  endl;
+				//cout << "ARUCO: \n\t" << "x: " << data_msg.x << " y: " << data_msg.y << " z: " << data_msg.z << " c: " << course*GeoMath::CONST.RAD2DEG <<   endl;
 				data_pub.publish(data_msg);
 			}
 			
