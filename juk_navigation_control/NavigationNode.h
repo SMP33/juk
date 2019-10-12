@@ -113,6 +113,8 @@ private:
 	GeoMath::v3     velocity_need; 
 	GeoMath::v3     current_point_home;    ///< текущая точка относительно дома
 	
+	double homepoint_course;
+	
 	struct Target ///< Описывает целевую точку
 	{
 		GeoMath::v3geo	point_abs;    ///< абсолютные координаты цели
@@ -153,6 +155,7 @@ Target target;   ///< Цель(координаты по А3)
 	bool stable_now;   ///< флаг, показывает, находится ли аппарат в целевой точке в данный момент
 	bool stable_last;  ///< флаг, показывает, находился ли аппарат в целевой точке на предыдущий итерации цикла
 	ros::Time stable_start;
+	ros::Time home_uptime;
 	double stable_time;
 	
 	ros::NodeHandle nh;
@@ -187,7 +190,11 @@ Target target;   ///< Цель(координаты по А3)
 	
 	void init_handlers();
 	
-
+	void print_telemetry();
+	const int telem_heigth = 10;
+	ros::Time last_telemetry;
+	
+	std::map<int, std::string> state_map =  { {0,"IDLE"},{1, "FLY_SIMPLE"},{2, "FLY_SAFE"},{3, "LAND_SIMPLE"},{4, "LAND_ARUCO"}};
 };
 
 #endif // !__NAVIGATION_NODE__

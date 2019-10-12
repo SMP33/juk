@@ -16,7 +16,68 @@
 using namespace cv;
 using namespace std;
 
-//#define ROTATE_
+#ifndef CURSOR_H
+#define	CURSOR_H
+
+#define CLEAR(rows)               printf("\033[%02dA\033[0J",rows+1)
+// Положение курсора
+#define HOME                printf("\033[1;1H")
+#define STORE_CURSOR        printf("\033[s")
+#define RESET_CURSOR        printf("\033[u")
+#define CLEAR_EOL           printf("\033[K")
+#define CURSOR(row, column) printf("\033[%02d;%02dH", row, column)
+
+
+
+// Выбор цвета
+#define RESET_COLOR printf("\033[0m")
+
+#define BLACK       0
+#define RED         1
+#define GREEN       2
+#define YELLOW      3
+#define BLUE        4
+#define MAGENTA     5
+#define CYAN        6
+#define WHITE       7
+#define UNDEF       -1
+
+// Выбор оформления
+#define NONE        0
+#define BOLD        1
+#define DIM         2
+#define UNDERLINE   4
+#define BLINK       5
+#define REVERSE     7
+
+#define COLOR(bgcolor, fgcolor)         printf("\033[%02d;%02dm", (bgcolor + 30), (fgcolor + 40))
+#define COLOR_A(bgcolor, fgcolor, attr) printf("\033[%02d;%02d;%1dm", (bgcolor + 30), (fgcolor + 40), attr)
+#endif	/* CURSOR_H */
+
+#define ROTATE_
+
+void angle_normalize(double& rad)
+{
+	while (rad < 0)
+	{
+		rad += 2*GeoMath::CONST.Pi;
+	}
+	
+	while (rad >= 2*GeoMath::CONST.Pi)
+	{
+		rad -= 2*GeoMath::CONST.Pi;
+	}
+}
+
+struct mrk_params
+{
+	int size=0;
+	GeoMath::v3 pos_last;
+	GeoMath::v3 pos_now;
+	double course=0;
+	int qulity=0;
+	int max_qulity=5;
+};
 
 Vec3d rotationMatrixToEulerAngles(Mat &R)
 {
@@ -71,6 +132,8 @@ class ImageConverter
 	int mrk_id;
 	int mrk_size;
 	
+	map<int, mrk_params> markers;
+	
 public:
 	ImageConverter()
 		: it_(nh_)
@@ -101,7 +164,17 @@ public:
 			1,
 			&ImageConverter::imageCb,
 			this);
-		cout << "SUB ARUCO" << endl;
+		cout << "ARUCO DETECTION START" << endl;
+//		cout << endl;
+//		cout << endl;
+		cout << endl;
+		mrk_params mp;
+		
+		mp.size = 540;
+		markers[172] = mp;
+		
+		mp.size = 99;
+		markers[18] = mp;
 
 	}
 
@@ -132,43 +205,41 @@ public:
 		vector<int> markerIds;
 		vector<vector<Point2f>> markerCorners, rejectedCandidates;
 		Ptr<aruco::Dictionary> markerDictionary = aruco::getPredefinedDictionary(aruco::PREDEFINED_DICTIONARY_NAME::DICT_4X4_1000);
+		cv::Ptr<cv::aruco::DetectorParameters> parameters = aruco::DetectorParameters::create();
+		parameters->adaptiveThreshWinSizeMin=10;
 		std_msgs::Header header; 
 
-		aruco::detectMarkers(img, markerDictionary, markerCorners, markerIds);
+		
+		aruco::detectMarkers(img, markerDictionary, markerCorners, markerIds,parameters);
 
 	
 		
-		vector<GeoMath::v3> coordinates_all(0);
-		vector<double> course_all(0);
-		double angle = 0;
+		vector<GeoMath::v3> position_vec(0);
+		vector<double> course_vec(0);
 		
-		for (int i = 0; i < markerCorners.size(); i++)
-		{
+		
+		
 			
-			switch (markerIds[i])
-			{
-			case 18:
-				mrk_size = 99;
-				break;
-			case 172:
-				mrk_size = 540;
-				break;
-			default:
+		for (int i = 0; i < markerCorners.size(); i++)
+		{			
+			if(markers.find(markerIds[i]) == markers.end())
 				continue;
-				break;
-			}
-			auto corn = markerCorners[i];
+			
+			mrk_params& mp = markers[markerIds[i]];
+			
+			vector<Point2f> corn(markerCorners[i]);
 			vector<cv::Vec3d> rvecs, tvecs, euler;
-			vector<vector<Point2f>> corners;
+			vector<vector<Point2f>> corners(0);
 			corners.push_back(corn);
 			cv::aruco::estimatePoseSingleMarkers(corners,
-				mrk_size/10,
+				mp.size/10,
 				camera_matrix_,
 				dist_coeffs_,
 				rvecs,
 				tvecs);
 				
-			cv::aruco::drawAxis(img, camera_matrix_, dist_coeffs_, rvecs, tvecs, mrk_size / 20);
+			//cv::aruco::drawAxis(img, camera_matrix_, dist_coeffs_, rvecs, tvecs, mrk_size / 20);
+			
 				
 			double course = rvec2Euler(rvecs[0])[2];
 			
@@ -182,59 +253,136 @@ public:
 			
 #ifdef ROTATE_
 			Vec3d v3d(T);
-#else
-			Vec3d v3d(tvec);
-#endif // ROTATE_
-
 			
 			GeoMath::v3 offset(v3d[0], v3d[1], v3d[2]);
-			
-			course_all.push_back(course);
-			coordinates_all.push_back(offset);
-		}
-		
-		int marker_count = course_all.size();
-		
-		if (marker_count > 0 && marker_count == coordinates_all.size())
-		{
-			double course = course_all[0];
-			GeoMath::v3 offset;
-			
-			for (size_t i = 0; i < marker_count; i++)
-			{
-				offset = offset + coordinates_all[i];
-			}
-			offset = offset / (double)marker_count;
-			
-			//offset.y = -offset.y;
-			
-			//offset = offset.rotateXY(course);	
-			
-			GeoMath::v3 now_abs_mrk_pos(offset);
-						
-			if ((now_abs_mrk_pos - last_abs_mrk_pos).length_xyz() < 150)
-			{
-				juk_msg::juk_aruco_module_data data_msg;
-#ifdef ROTATE_
-				data_msg.x = -offset.y;
-				data_msg.y = -offset.x;
-				data_msg.z = offset.z;
-#else
-				data_msg.x = offset.y;
-				data_msg.y = offset.x;
-				data_msg.z = offset.z;
-#endif // ROTATE_
-				data_msg.course = course;
-				
-				//cout << "ARUCO: \n\t" << "x: " << data_msg.x << " y: " << data_msg.y << " z: " << data_msg.z << " c: " << course*GeoMath::CONST.RAD2DEG <<   endl;
-				data_pub.publish(data_msg);
-			}
-			
+			offset.y = -offset.y;
+			offset = offset.rotateXY(course);
 
+			mp.pos_now = offset;
+			angle_normalize(course);
+			mp.course = course;
 			
-			last_abs_mrk_pos = now_abs_mrk_pos;
+#else
+			Vec3d v3d(tvec);
+			GeoMath::v3 offset(v3d[0], v3d[1], v3d[2]);
+#endif // ROTATE_
+			Scalar color = Scalar(0, 0, 255);
+						
+			if ((mp.pos_now - mp.pos_last).length_xyz() < 200 )
+			{
+				mp.qulity++;
+				
+				if (mp.qulity >= mp.max_qulity)
+				{
+					color = Scalar(0, 255, 0);
+					mp.qulity = mp.max_qulity;
+					
+					if (arcLength(markerCorners[i], true) < 150)
+						{
+							color = Scalar(0, 255, 255);
+							Vec3d pos_simple(tvec);
+							mp.pos_now = GeoMath::v3(-pos_simple[0], -pos_simple[1], pos_simple[2]);
+						}
+					
+					position_vec.push_back(mp.pos_now);
+					course_vec.push_back(mp.course);
+					
+//					cout << endl << "ID: " << markerIds[i]<<" ";
+//					cout << mp.pos_now << endl;
+				}	
+			}
+			else
+			{
+				mp.qulity = 0;
+			}
+			
+			mp.pos_last = mp.pos_now;
+			
+			vector<vector<Point>> contours(1);
+			
+			for (auto c : corners[0])
+			{
+				contours[0].push_back(c);
+			}
+			
+			drawContours(img, contours, 0, color, 2);
 		}
 		
+		
+		int s_c = course_vec.size();
+		int s_p = position_vec.size();
+		
+		if (s_c > 0 && s_c == s_p)
+		{
+			GeoMath::v2 direction(0, 0);
+			double course = 0;
+			GeoMath::v3 pos;
+			
+			for (int i = 0; i < s_c; i++)
+			{
+				direction = direction + GeoMath::v2(cos(course_vec[i]), sin(course_vec[i]));
+				pos = pos + position_vec[i];
+			}
+			pos = pos / s_p;
+			course = (direction).angle_xy(GeoMath::v2(1,0));
+			
+			juk_msg::juk_aruco_module_data data_msg;
+			
+			data_msg.x = -pos.y;
+			data_msg.y = -pos.x;
+			data_msg.z =  pos.z;
+			data_msg.course = course;
+			data_pub.publish(data_msg);
+			
+			//CLEAR(2);
+			
+			//cout  << "ArUco position:"<<endl << "\tx: " << data_msg.x << " y: " << data_msg.y << " z: " << data_msg.z << " c: " << course*GeoMath::CONST.RAD2DEG <<   endl << endl;
+		}
+//		
+//		int marker_count = course_all.size();
+//		
+//		if (marker_count > 0 && marker_count == coordinates_all.size())
+//		{
+//			double course = course_all[0];
+//			GeoMath::v3 offset;
+//			
+//			for (size_t i = 0; i < marker_count; i++)
+//			{
+//				offset = offset + coordinates_all[i];
+//			}
+//			offset = offset / (double)marker_count;
+//#ifdef ROTATE_
+//			offset.y = -offset.y;
+//			
+//			offset = offset.rotateXY(course);	
+//#endif // ROTATE_
+//			
+//			GeoMath::v3 now_abs_mrk_pos(offset);
+//						
+//			if ((now_abs_mrk_pos - last_abs_mrk_pos).length_xyz() < 150)
+//			{
+//				juk_msg::juk_aruco_module_data data_msg;
+//#ifdef ROTATE_
+//				data_msg.x = -offset.y;
+//				data_msg.y = -offset.x;
+//				data_msg.z = offset.z;
+//				
+//				cout << "ARUCO: \n\t" << "x: " << data_msg.x << " y: " << data_msg.y << " z: " << data_msg.z << " c: " << course*GeoMath::CONST.RAD2DEG <<   endl;
+//#else
+//				data_msg.x = offset.y;
+//				data_msg.y = offset.x;
+//				data_msg.z = offset.z;
+//#endif // ROTATE_
+//				data_msg.course = course;
+//				
+//				data_pub.publish(data_msg);
+//			}
+//			
+//
+//			
+//			last_abs_mrk_pos = now_abs_mrk_pos;
+//		}
+//		
 		//resize(img, img, Size(), 3, 3);		
 		
 		header.stamp = ros::Time::now();
