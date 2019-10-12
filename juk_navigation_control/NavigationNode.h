@@ -94,6 +94,7 @@ private:
 	    \param ctrl_mode режим торможения
 	    \return сообщение, содержащее параметры управления А3
 	*/
+	
 	juk_msg::juk_control_dji_msg calculateControl(GeoMath::v3 offset,
 		GeoMath::v3 current_velocity,
 		double course_need,
@@ -129,7 +130,13 @@ private:
 		ros::Time uptime;   ///<время последнего обновления данных
 	};
 	
-	Target target;   ///< Цель(координаты по А3)
+	typedef struct CtrlStatus
+	{
+		juk_msg::juk_control_dji_msg msg;
+		bool stable_now;
+	};
+	
+Target target;   ///< Цель(координаты по А3)
 	Target target_precision;    ///< Цель(координаты по Емлидке)
 	Target current_target;   ///< Цель (принимает значения либо target, либо target_precision )
 	Target sub_target;   ///< Подцель
@@ -146,6 +153,7 @@ private:
 	bool stable_now;   ///< флаг, показывает, находится ли аппарат в целевой точке в данный момент
 	bool stable_last;  ///< флаг, показывает, находился ли аппарат в целевой точке на предыдущий итерации цикла
 	ros::Time stable_start;
+	double stable_time;
 	
 	ros::NodeHandle nh;
 	ros::Publisher pub_dji_control;
@@ -175,7 +183,7 @@ private:
 	//FIXME calcVel - calcVel
 	void calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath::v3 current_velocity, uint8_t ctrl_mode);
 	
-	std::map<int, std::function<juk_msg::juk_control_dji_msg()>> state_handlers;  ///< ключ - состояние, значение - функция-обработчик для данного состояния
+	std::map<int, std::function<CtrlStatus()>> state_handlers;   ///< ключ - состояние, значение - функция-обработчик для данного состояния
 	
 	void init_handlers();
 	

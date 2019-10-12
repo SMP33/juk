@@ -16,7 +16,7 @@
 using namespace cv;
 using namespace std;
 
-#define ROTATE_
+//#define ROTATE_
 
 Vec3d rotationMatrixToEulerAngles(Mat &R)
 {
@@ -182,7 +182,8 @@ public:
 			
 #ifdef ROTATE_
 			Vec3d v3d(T);
-#else			Vec3d v3d(tvec);
+#else
+			Vec3d v3d(tvec);
 #endif // ROTATE_
 
 			
@@ -205,9 +206,9 @@ public:
 			}
 			offset = offset / (double)marker_count;
 			
-			offset.y = -offset.y;
+			//offset.y = -offset.y;
 			
-			offset = offset.rotateXY(course);	
+			//offset = offset.rotateXY(course);	
 			
 			GeoMath::v3 now_abs_mrk_pos(offset);
 						
@@ -218,7 +219,8 @@ public:
 				data_msg.x = -offset.y;
 				data_msg.y = -offset.x;
 				data_msg.z = offset.z;
-#else				data_msg.x = offset.y;
+#else
+				data_msg.x = offset.y;
 				data_msg.y = offset.x;
 				data_msg.z = offset.z;
 #endif // ROTATE_
