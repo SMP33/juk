@@ -71,9 +71,20 @@ void angle_normalize(double& rad)
 
 struct mrk_params
 {
+	mrk_params()
+	{
+	}
+	mrk_params(int size_, GeoMath::v3 abs_pos_) :
+		size(size_),
+		abs_pos(abs_pos_)
+	{
+	}
+	
 	int size=0;
 	GeoMath::v3 pos_last;
 	GeoMath::v3 pos_now;
+	GeoMath::v3 abs_pos;
+	
 	double course=0;
 	int qulity=0;
 	int max_qulity=5;
@@ -170,11 +181,18 @@ public:
 		cout << endl;
 		mrk_params mp;
 		
-		mp.size = 540;
-		markers[172] = mp;
+		//mp.size = 540;
+		markers[172] = mrk_params(540, GeoMath::v3(0, 0, 0));
+		markers[18] = mrk_params(99, GeoMath::v3(0, 0, 0));
+		markers[19] = mrk_params(99, GeoMath::v3(-10, 19, 0));
+		markers[123] = mrk_params(99, GeoMath::v3(13.5, -13.5, 0));
+		markers[97] = mrk_params(99, GeoMath::v3(18, 20, 0));
+//		//mp.size = 99;
+//		markers[0] = mrk_params(60, GeoMath::v3(-37+1000, 37, 0)/10); 
+//		markers[1] = mrk_params(60, GeoMath::v3(37 + 1000, 37, 0) / 10); 
+//		markers[2] = mrk_params(60, GeoMath::v3(-37 + 1000, -37, 0) / 10); 
+//		markers[3] = mrk_params(60, GeoMath::v3(37 + 1000, -37, 0) / 10); 
 		
-		mp.size = 99;
-		markers[18] = mp;
 
 	}
 
@@ -215,15 +233,22 @@ public:
 	
 		
 		vector<GeoMath::v3> position_vec(0);
+		vector<GeoMath::v3> abs_pos_vec(0);
 		vector<double> course_vec(0);
+		
 		
 		
 		
 			
 		for (int i = 0; i < markerCorners.size(); i++)
 		{			
-			if(markers.find(markerIds[i]) == markers.end())
+			if (markers.find(markerIds[i]) == markers.end())
+			{
+				vector<vector<Point2f>> corners_ = { markerCorners[i]};
+				vector<int> ids_ = { markerIds[i]};
+				aruco::drawDetectedMarkers(img, corners_, ids_);
 				continue;
+			}
 			
 			mrk_params& mp = markers[markerIds[i]];
 			
@@ -238,7 +263,7 @@ public:
 				rvecs,
 				tvecs);
 				
-			//cv::aruco::drawAxis(img, camera_matrix_, dist_coeffs_, rvecs, tvecs, mrk_size / 20);
+			cv::aruco::drawAxis(img, camera_matrix_, dist_coeffs_, rvecs, tvecs, mp.size / 20);
 			
 				
 			double course = rvec2Euler(rvecs[0])[2];
@@ -284,7 +309,8 @@ public:
 							mp.pos_now = GeoMath::v3(-pos_simple[0], -pos_simple[1], pos_simple[2]);
 						}
 					
-					position_vec.push_back(mp.pos_now);
+					position_vec.push_back(mp.pos_now + mp.abs_pos);
+					abs_pos_vec.push_back(mp.abs_pos);
 					course_vec.push_back(mp.course);
 					
 //					cout << endl << "ID: " << markerIds[i]<<" ";
@@ -307,7 +333,6 @@ public:
 			
 			drawContours(img, contours, 0, color, 2);
 		}
-		
 		
 		int s_c = course_vec.size();
 		int s_p = position_vec.size();
@@ -338,6 +363,9 @@ public:
 			
 			//cout  << "ArUco position:"<<endl << "\tx: " << data_msg.x << " y: " << data_msg.y << " z: " << data_msg.z << " c: " << course*GeoMath::CONST.RAD2DEG <<   endl << endl;
 		}
+		
+		
+		
 //		
 //		int marker_count = course_all.size();
 //		

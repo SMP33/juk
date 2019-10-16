@@ -152,7 +152,7 @@ private:
 	
 	ArUcoTarget aruco_land;    ///< Маркер, на который нужно приземлиться
 	
-	int STATE = STATES::FLY_SIMPLE;     ///< текущее состояние
+	int STATE = STATES::IDLE;     ///< текущее состояние
 	int SUB_STATE = SUB_STATES::BASIC_STATE;    ///<  текущее подсостояние
 	int GPS_STATE = GPS_STATES::NO_SIGNAL;
 	
@@ -198,9 +198,10 @@ private:
 	
 	void init_handlers();
 	
-	void print_telemetry();
+	void print_telemetry(const ros::TimerEvent& event);
 	const int telem_heigth = 14;
 	ros::Time last_telemetry;
+	ros::Timer timer_telemetry;
 	
 	std::map<int, std::string> state_map = { { 0, "IDLE" }, { 1, "FLY_SIMPLE" }, { 2, "FLY_SAFE" }, { 3, "LAND_SIMPLE" }, { 4, "LAND_ARUCO" } };
 	std::map<int, std::string> sub_state_map = {

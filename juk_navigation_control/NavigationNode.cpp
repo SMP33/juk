@@ -303,8 +303,8 @@ NavigationNode::NavigationNode(int argc, char** argv)
 	params.args["safe_alt"] = 20;
 	params.args["enable_emlid"] = 0;
 	params.args["gear_height"] = 2;
-	params.args["aruco_marker_id"] = 10;
-	params.args["aruco_marker_size"] = 180;
+//	params.args["aruco_marker_id"] = 10;
+//	params.args["aruco_marker_size"] = 180;
 	
 	usleep(5000000);
 	
@@ -350,6 +350,9 @@ NavigationNode::NavigationNode(int argc, char** argv)
 		
 	pub_aruco_action.publish(aruco_msg);	
 	init_handlers();
+	
+	this->timer_telemetry = nh.createTimer(ros::Duration(0.2), &NavigationNode::print_telemetry, this);
+	
 	
 	for (int i = 0; i < telem_heigth + 3; i++)
 	{
@@ -628,8 +631,9 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 	{
 		pub_dji_control.publish(output_dji);
 		pub_position_data.publish(position_data);
-		print_telemetry();
 	}
+	
+	//print_telemetry();
 }
 
 
@@ -723,7 +727,7 @@ void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg:
 	
 	//std::cout << "TARGET:\n" << this->target.point_abs - homepoint << std::endl;
 }
-void NavigationNode::print_telemetry()
+void NavigationNode::print_telemetry(const ros::TimerEvent& event)
 {
 	auto now_time = ros::Time::now();
 	if ((now_time - last_telemetry).nsec >  1000000000.0 * 0.15)
