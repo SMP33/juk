@@ -454,9 +454,12 @@ public:
 		
 
 		auto now = ros::Time::now();
-		int delay = (now - last_img_pub).nsec;
-		auto t2 = ros::Time::now();
-		if (delay > 1e8)
+		int delay = (now - last_cb).nsec;
+		
+		last_cb = now;
+		
+		
+		if ((now - last_img_pub).nsec > 1e8)
 		{
 			header.stamp = ros::Time::now();
 			
@@ -467,7 +470,7 @@ public:
 			line(img, img_center - r_v_1, img_center + r_v_1, Scalar(0, 255, 0), 1);
 			line(img, img_center - r_v_2, img_center + r_v_2, Scalar(0, 255, 0), 1);
 			
-			putText(img, to_string((int)(1e9 / (t2 - t1).nsec)), Point(10, 20), FONT_HERSHEY_COMPLEX_SMALL, 1, Scalar(0, 255, 0), 1, CV_AA);
+			putText(img, to_string((int)(1e9 / delay)), Point(10, 20), FONT_HERSHEY_COMPLEX_SMALL, 1, Scalar(0, 255, 0), 1, CV_AA);
 		
 			//circle(img, Point2i(img.cols / 2, img.rows / 2), 20, Scalar(255, 0, 255), 2);
 		
