@@ -199,7 +199,14 @@ NavigationNode::init_handlers()
 			SUB_STATE = SUB_STATES::LANDING_ARUCO_FLY;
 		else
 			if ((ros::Time::now() - aruco_land.uptime).toNSec() < aruco_timeout && SUB_STATE == SUB_STATES::LANDING_ARUCO_FLY)
+		{
+			if (abs(aruco_land.offset.z) < 0.5)
+			{
+				SUB_STATE = SUB_STATES::LANDING_ARUCO_HOLD_CENTER;
+			}
+			else
 			SUB_STATE = SUB_STATES::LANDING_ARUCO_LAND;
+		}
 				
 		switch (SUB_STATE)
 		{
@@ -215,11 +222,6 @@ NavigationNode::init_handlers()
 			{		
 				sub_target.cruising_speed = 0.7;
 					
-				if (flight_status < 1)
-					set_homepoint_flag = true;
-			
-				//std::cout << aruco_land.offset << std::endl;
-			
 				double max_dist = abs(aruco_land.offset.z) / 7 + 0.1;
 				double current_dist = aruco_land.offset.length_xy();
 			
@@ -249,12 +251,9 @@ NavigationNode::init_handlers()
 					current_target.course = aruco_land.course;
 					sub_target.course = aruco_land.course;
 				
-				
-				
 					GeoMath::v2 cC(cos(current_target.course*GeoMath::CONST.DEG2RAD), sin(current_target.course*GeoMath::CONST.DEG2RAD));
 					GeoMath::v2 cN(cos(position_data.course*GeoMath::CONST.DEG2RAD), sin(position_data.course*GeoMath::CONST.DEG2RAD));
 
-				
 					ctrl.msg.data_x = aruco_land.offset.x;
 					ctrl.msg.data_y = -aruco_land.offset.y;
 					ctrl.msg.course = cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG / 2;
@@ -267,10 +266,14 @@ NavigationNode::init_handlers()
 						if (dist_coeff < 0)
 							dist_coeff = 0;
 					
-						if (aruco_land.offset.z > 2.0)
+						if (aruco_land.offset.z > 1.5)
 							ctrl.msg.data_z = -0.5*dist_coeff;
 						else
-							ctrl.msg.data_z = -0.1;
+						{
+							ctrl.msg.data_z = -0.1*dist_coeff - 0.1;
+							ctrl.msg.data_x = ctrl.msg.data_x * 1.2;
+							ctrl.msg.data_y = ctrl.msg.data_y * 1.2;
+						}
 					}
 					else
 					{
@@ -284,10 +287,25 @@ NavigationNode::init_handlers()
 				}
 			}
 			break ;
+		case SUB_STATES::LANDING_ARUCO_HOLD_CENTER:
+			{
+				
+			}
+			break;
 		default :
 			
 			break ;
 		}
+		
+		if (flight_status < 2)
+		{
+			ctrl.msg.data_x = 0;
+			ctrl.msg.data_y = 0;
+			ctrl.msg.data_z = -0.3;
+		}
+		
+		if (flight_status < 1)
+			set_homepoint_flag = true;
 		
 		ctrl.stable_now = false;
 		
@@ -339,13 +357,10 @@ NavigationNode::NavigationNode(int argc, char** argv)
 	
 	stable_now = false;
 	stable_last = false;
+	stable_time = 0;
 	
 	
 	juk_msg::juk_aruco_module_action aruco_msg;
-	aruco_msg.id = 10;
-	aruco_msg.size = 180;
-	aruco_msg.action = 1;
-	
 	set_homepoint_flag = true;
 		
 	pub_aruco_action.publish(aruco_msg);	
@@ -737,11 +752,13 @@ void NavigationNode::print_telemetry(const ros::TimerEvent& event)
 		std::cout << "STATE:\n\t" << state_map[STATE] << std::endl;
 		std::cout << "SUB STATE:\n\t" << sub_state_map[SUB_STATE] << std::endl;
 		std::cout << "GPS STATE:\n\t" << gps_state_map[GPS_STATE] << std::endl;
+		std::cout << "FLIGHT STATUS:\n\t" << flight_status_map[(int)flight_status] << std::endl;
+		//std::cout << "FLIGHT STATUS:\n\t" << (int)flight_status << std::endl;
 		std::cout << "POSITION:\n\t" << GeoMath::v3(position_data.x, position_data.y, position_data.z) << " c: " << position_data.course << std::endl;
 		std::cout << "TARGET:\n\t" << (this->target.point_abs - homepoint) << " c: " << this->target.course << std::endl;
 		std::cout << "STABLE TIME:\n\t" << stable_time << std::endl;
 		
-		if ((now_time - aruco_land.uptime).sec < 10)
+		if ((now_time - aruco_land.uptime).sec < 3)
 		{
 			std::cout << "ARUCO POSITION:\n\t" << aruco_land.offset << std::endl;
 		}

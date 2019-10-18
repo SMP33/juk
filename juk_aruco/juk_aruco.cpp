@@ -8,6 +8,7 @@
 #include <opencv2/imgcodecs/imgcodecs.hpp>
 #include <opencv2/aruco.hpp>
 #include <opencv2/calib3d.hpp>
+#include <opencv2/video/tracking.hpp>
 
 #include <GeoMath.h>
 #include <juk_msg/juk_aruco_module_action.h>
@@ -15,6 +16,10 @@
  
 using namespace cv;
 using namespace std;
+
+#define drawCross( img, center, color, d )                                 \
+line( img, Point( 300+center.x - d, 300+center.y - d ), Point( 300+center.x + d, 300+center.y + d ), color, 2, CV_AA, 0); \
+line( img, Point( 300+center.x + d, 300+center.y - d ), Point( 300+center.x - d, 300+center.y + d ), color, 2, CV_AA, 0 )
 
 #ifndef CURSOR_H
 #define	CURSOR_H
@@ -144,12 +149,19 @@ class ImageConverter
 	int mrk_size;
 	
 	map<int, mrk_params> markers;
+	KalmanFilter KF;
+	Mat_<float> measurement;
+	
+	ros::Time last_img_pub;
 	
 public:
 	ImageConverter()
-		: it_(nh_)
+		: it_(nh_),
+		KF(4, 2, 0),
+		measurement(2, 1)
 	{
 		last_cb = ros::Time::now();
+		last_img_pub = last_cb;
 		mrk_id = 172;
 		mrk_size = 540;
 		
@@ -165,11 +177,11 @@ public:
 		data_pub = nh_.advertise<juk_msg::juk_aruco_module_data>("JUK/ARUCO/DATA", 1);
 		image_pub_img = it_.advertise("JUK/ARUCO/IMG", 1);
 		
-		camera_matrix_ = (cv::Mat1f(3, 3) << 262.9282657089, 0.0000000000, 153.6920230483,
-  0.0000000000, 262.4580575614, 121.4272230430,
+		camera_matrix_ = (cv::Mat1f(3, 3) <<  289.8053695514, 0.0000000000, 307.6909635602,
+  0.0000000000, 288.7444964497, 255.6323596501,
   0.0000000000, 0.0000000000, 1.0000000000);
 	
-		dist_coeffs_ = (cv::Mat1f(5, 1) << 0.2008202636, -0.4864094868, 0.0008956347, -0.0014447575, 0.1407952918);
+		dist_coeffs_ = (cv::Mat1f(5, 1) << -0.2184295845, 0.0359746937, -0.0007065258, -0.0014644036, -0.0021148780);
 		
 		image_sub_ = it_.subscribe("/main_camera/image_raw/throttled",
 			1,
@@ -182,11 +194,21 @@ public:
 		mrk_params mp;
 		
 		//mp.size = 540;
+		
 		markers[172] = mrk_params(540, GeoMath::v3(0, 0, 0));
 		markers[18] = mrk_params(99, GeoMath::v3(0, 0, 0));
 		markers[19] = mrk_params(99, GeoMath::v3(-10, 19, 0));
 		markers[123] = mrk_params(99, GeoMath::v3(13.5, -13.5, 0));
 		markers[97] = mrk_params(99, GeoMath::v3(18, 20, 0));
+		
+		markers[0] = mrk_params(50, GeoMath::v3(0, 0, 0));
+		
+		
+		
+//		markers[8] = mrk_params(598, GeoMath::v3(0, 0, 0));
+//		markers[19] = mrk_params(99, GeoMath::v3(-5, 15, 0));
+//		markers[0] = mrk_params(99, GeoMath::v3(5, 5, 0));
+		
 //		//mp.size = 99;
 //		markers[0] = mrk_params(60, GeoMath::v3(-37+1000, 37, 0)/10); 
 //		markers[1] = mrk_params(60, GeoMath::v3(37 + 1000, 37, 0) / 10); 
@@ -194,6 +216,19 @@ public:
 //		markers[3] = mrk_params(60, GeoMath::v3(37 + 1000, -37, 0) / 10); 
 		
 
+		KF.transitionMatrix = (Mat_<float>(4, 4) << 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1);
+		 measurement.setTo(Scalar(0));
+		
+		KF.statePre.at<float>(0) = 0;
+		KF.statePre.at<float>(1) = 0;
+		KF.statePre.at<float>(2) = 0;
+		KF.statePre.at<float>(3) = 0;
+		
+		setIdentity(KF.measurementMatrix);
+		setIdentity(KF.processNoiseCov, Scalar::all(1e-4));
+		setIdentity(KF.measurementNoiseCov, Scalar::all(5));
+		setIdentity(KF.errorCovPost, Scalar::all(.5));
+		
 	}
 
 	~ImageConverter()
@@ -236,10 +271,6 @@ public:
 		vector<GeoMath::v3> abs_pos_vec(0);
 		vector<double> course_vec(0);
 		
-		
-		
-		
-			
 		for (int i = 0; i < markerCorners.size(); i++)
 		{			
 			if (markers.find(markerIds[i]) == markers.end())
@@ -302,7 +333,7 @@ public:
 					color = Scalar(0, 255, 0);
 					mp.qulity = mp.max_qulity;
 					
-					if (arcLength(markerCorners[i], true) < 150)
+					if (arcLength(markerCorners[i], true) < 200)
 						{
 							color = Scalar(0, 255, 255);
 							Vec3d pos_simple(tvec);
@@ -355,13 +386,21 @@ public:
 			
 			data_msg.x = -pos.y;
 			data_msg.y = -pos.x;
+			
+			Mat prediction = KF.predict();
+			Point predictPt(prediction.at<float>(0), prediction.at<float>(1));
+			
+			measurement(0) = data_msg.x;
+			measurement(1) = data_msg.y;
+			
+			Mat estimated = KF.correct(measurement);
+//			data_msg.x = estimated.at<float>(0);
+//			data_msg.y = estimated.at<float>(1);
+		
+				
 			data_msg.z =  pos.z;
 			data_msg.course = course;
 			data_pub.publish(data_msg);
-			
-			//CLEAR(2);
-			
-			//cout  << "ArUco position:"<<endl << "\tx: " << data_msg.x << " y: " << data_msg.y << " z: " << data_msg.z << " c: " << course*GeoMath::CONST.RAD2DEG <<   endl << endl;
 		}
 		
 		
@@ -413,22 +452,37 @@ public:
 //		
 		//resize(img, img, Size(), 3, 3);		
 		
-		header.stamp = ros::Time::now();
-		
-		line(img, Point(0, 0), Point(img.cols, img.rows), Scalar(255, 0, 255), 2);
-		line(img, Point(0, img.rows), Point(img.cols, 0), Scalar(255, 0, 255), 2);
-		
-		//circle(img, Point2i(img.cols / 2, img.rows / 2), 20, Scalar(255, 0, 255), 2);
-		
-		
-		//rotate(img, img, ROTATE_90_COUNTERCLOCKWISE);
-		
-		cv_bridge::CvImage out_img = cv_bridge::CvImage(header, sensor_msgs::image_encodings::TYPE_8UC3, img);
-		image_pub_img.publish(out_img.toImageMsg());
-		
+
+		auto now = ros::Time::now();
+		int delay = (now - last_img_pub).nsec;
 		auto t2 = ros::Time::now();
+		if (delay > 1e8)
+		{
+			header.stamp = ros::Time::now();
+			
+			auto img_center = Point(img.cols, img.rows)/2;
+			auto r_v_1 = Point(30, 30);
+			auto r_v_2 = Point(30, -30);
+			
+			line(img, img_center - r_v_1, img_center + r_v_1, Scalar(0, 255, 0), 1);
+			line(img, img_center - r_v_2, img_center + r_v_2, Scalar(0, 255, 0), 1);
+			
+			putText(img, to_string((int)(1e9 / (t2 - t1).nsec)), Point(10, 20), FONT_HERSHEY_COMPLEX_SMALL, 1, Scalar(0, 255, 0), 1, CV_AA);
 		
-		//cout <<"Delay: "<< t2 - t1 << endl;
+			//circle(img, Point2i(img.cols / 2, img.rows / 2), 20, Scalar(255, 0, 255), 2);
+		
+		
+			//rotate(img, img, ROTATE_90_COUNTERCLOCKWISE);
+		
+			cv_bridge::CvImage out_img = cv_bridge::CvImage(header, sensor_msgs::image_encodings::TYPE_8UC3, img);
+			image_pub_img.publish(out_img.toImageMsg());
+		
+			last_img_pub = now;
+		}
+		
+		
+		
+		//cout <<"Delay: "<<  << endl;
 	}
 };
 

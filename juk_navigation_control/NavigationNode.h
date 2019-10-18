@@ -65,6 +65,8 @@ public:
 		///< подсостояние LANDING_ARUCO - полет к точке по прямой
 	   LANDING_ARUCO_LAND = 402,
 		///< подсостояние LANDING_ARUCO - полет из указанной точки к каркеру 
+		 LANDING_ARUCO_HOLD_CENTER = 403,
+		 LANDING_ARUCO_RUSH = 404
 	};
 	
 	enum GPS_STATES
@@ -156,7 +158,7 @@ private:
 	int SUB_STATE = SUB_STATES::BASIC_STATE;    ///<  текущее подсостояние
 	int GPS_STATE = GPS_STATES::NO_SIGNAL;
 	
-	int flight_status;   ///< статус полета
+	int flight_status=-1;   ///< статус полета
 	
 	float yaw_rate;    ///< текущая угловая скорость
 	
@@ -199,7 +201,7 @@ private:
 	void init_handlers();
 	
 	void print_telemetry(const ros::TimerEvent& event);
-	const int telem_heigth = 14;
+	const int telem_heigth = 16;
 	ros::Time last_telemetry;
 	ros::Timer timer_telemetry;
 	
@@ -208,13 +210,20 @@ private:
 		{ 0, "BASIC_STATE" },
 	{ 201,"FLY_SAFE_UP"}, { 202,"FLY_SAFE_CENTER"},
 	{ 301,"LANDING_SIMPLE_FLY"}, { 302,"LANDING_SIMPLE_LAND"},
-	{ 401,"LANDING_ARUCO_FLY"}, { 202,"LANDING_ARUCO_LAND"}
+	{ 401,"LANDING_ARUCO_FLY"}, { 402,"LANDING_ARUCO_LAND"},{ 403, "LANDING_ARUCO_HOLD_CENTER"},{ 404, "LANDING_ARUCO_RUSH"}
 	};
 	
 	std::map<int, std::string> gps_state_map = {
-		{0,"NO_SIGNAL"},
-	{1,"BASIC_GPS"},
+		{0,"no signal"},
+	{1,"basic GPS"},
 	{2,"RTK"}
+	};
+	
+	std::map<int, std::string> flight_status_map = { 
+		{-1,"no data"},	
+		{0,"disarmed"},	
+		{1,"ready to flight"},	
+		{2,"in the air"}
 	};
 	
 };
