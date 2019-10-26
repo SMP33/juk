@@ -59,7 +59,6 @@ NavigationNode::init_handlers()
 					position_data.course,
 					current_target.cruising_speed,
 					juk_msg::juk_set_target_data_msg::mode_not_break_distance);
-				//calculateVelocity(current_target.cruising_speed, sub_position_offset, current_velocity, juk_msg::juk_set_target_data_msg::mode_not_break_distance) ;
 			}
 			else
 			{
@@ -72,7 +71,6 @@ NavigationNode::init_handlers()
 					position_data.course,
 					current_target.cruising_speed,
 					juk_msg::juk_set_target_data_msg::mode_not_break_distance);
-				//calculateVelocity(current_target.cruising_speed, sub_position_offset, current_velocity, ctrl_mode) ;
 			}
 				
 		
@@ -200,11 +198,6 @@ NavigationNode::init_handlers()
 		else
 			if ((ros::Time::now() - aruco_land.uptime).toNSec() < aruco_timeout && SUB_STATE == SUB_STATES::LANDING_ARUCO_FLY)
 		{
-			if (abs(aruco_land.offset.z) < 0.5)
-			{
-				SUB_STATE = SUB_STATES::LANDING_ARUCO_HOLD_CENTER;
-			}
-			else
 			SUB_STATE = SUB_STATES::LANDING_ARUCO_LAND;
 		}
 				
@@ -228,7 +221,6 @@ NavigationNode::init_handlers()
 				if (current_dist > max_dist)
 				{
 					target.course = aruco_land.course;
-					target_precision.course = aruco_land.course;
 					current_target.course = aruco_land.course;
 					sub_target.course = aruco_land.course;
 				
@@ -237,7 +229,6 @@ NavigationNode::init_handlers()
 					GeoMath::v2 cN(cos(position_data.course*GeoMath::CONST.DEG2RAD), sin(position_data.course*GeoMath::CONST.DEG2RAD));
 
 					ctrl.msg.course = 0;
-					//msg.course = cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG / 2;
 				
 					ctrl.msg.data_x = aruco_land.offset.x;
 					ctrl.msg.data_y = -aruco_land.offset.y;
@@ -247,7 +238,6 @@ NavigationNode::init_handlers()
 				else
 				{
 					target.course = aruco_land.course;
-					target_precision.course = aruco_land.course;
 					current_target.course = aruco_land.course;
 					sub_target.course = aruco_land.course;
 				
@@ -261,18 +251,20 @@ NavigationNode::init_handlers()
 					if (abs(ctrl.msg.course) < 2)
 					{
 					
-						double dist_coeff = (max_dist - current_dist) / max_dist;
+						double dist_coeff = abs((max_dist - current_dist) / max_dist);
 					
 						if (dist_coeff < 0)
 							dist_coeff = 0;
 					
 						if (aruco_land.offset.z > 1.5)
-							ctrl.msg.data_z = -0.5*dist_coeff;
+						{
+							ctrl.msg.data_z = -0.9*dist_coeff;
+						}
 						else
 						{
-							ctrl.msg.data_z = -0.1*dist_coeff - 0.1;
-							ctrl.msg.data_x = ctrl.msg.data_x * 1.2;
-							ctrl.msg.data_y = ctrl.msg.data_y * 1.2;
+							ctrl.msg.data_z =  -0.2;
+							ctrl.msg.data_x = ctrl.msg.data_x;
+							ctrl.msg.data_y = ctrl.msg.data_y;
 						}
 					}
 					else
@@ -287,11 +279,6 @@ NavigationNode::init_handlers()
 				}
 			}
 			break ;
-		case SUB_STATES::LANDING_ARUCO_HOLD_CENTER:
-			{
-				
-			}
-			break;
 		default :
 			
 			break ;
@@ -319,12 +306,13 @@ NavigationNode::NavigationNode(int argc, char** argv)
 	std::cout.precision(2);
 	
 	params.args["safe_alt"] = 20;
-	params.args["enable_emlid"] = 0;
+	params.args["enable_emlid"] = 1;
 	params.args["gear_height"] = 2;
-//	params.args["aruco_marker_id"] = 10;
-//	params.args["aruco_marker_size"] = 180;
+	params.args["navigation_telem"] = 1;
+	//	params.args["aruco_marker_id"] = 10;
+	//	params.args["aruco_marker_size"] = 180;
 	
-	usleep(5000000);
+		usleep(5000000);
 	
 	params.parse(argc, argv);
 	std::cout << c(32, "@Parameters JUK_NAVIGATION_NODE: ") << std::endl;
@@ -352,12 +340,15 @@ NavigationNode::NavigationNode(int argc, char** argv)
 	sub_aruco_data = nh.subscribe("JUK/ARUCO/DATA", 1, &NavigationNode::aruco_callback, this);
 	sub_dji_gps = nh.subscribe("JUK/DJI/GPS", 1, &NavigationNode::gps_callback, this);
 	sub_set_target = nh.subscribe("JUK/TARGET", 1, &NavigationNode::set_target_callback, this);
-	sub_precision_gps = nh.subscribe("REACH_EMLID_DATA", 1, &NavigationNode::precision_gps_callback, this);
 	sub_action_process = nh.subscribe("JUK/NAVIGATION_ACTIONS", 1, &NavigationNode::action_process_callback, this);
+	if (params.args["enable_emlid"] == 1)
+	{
+		sub_precision_gps = nh.subscribe("REACH_EMLID_DATA", 1, &NavigationNode::precision_gps_callback, this);
+	}
 	
 	stable_now = false;
 	stable_last = false;
-	stable_time = 0;
+	stable_time = -1;
 	
 	
 	juk_msg::juk_aruco_module_action aruco_msg;
@@ -414,11 +405,16 @@ NavigationNode::calculateControl(GeoMath::v3 offset, GeoMath::v3 current_velocit
 	GeoMath::v2 cC(cos(course_current*GeoMath::CONST.DEG2RAD), sin(course_current*GeoMath::CONST.DEG2RAD));
 	GeoMath::v2 cN(cos(course_need*GeoMath::CONST.DEG2RAD), sin(course_need*GeoMath::CONST.DEG2RAD));
 
-	ans.course = -cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG / 2;
-		
+	ans.course = -cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG;
+
+	if (fabs(ans.course) > 5)
+	{
+		ans.course = ans.course / 5;
+	}
+	
 	GeoMath::v3 velocity_need = offset.normalize_xyz(need_abs_speed);
 
-	if (abs(ans.course) < 3)
+	if (abs(ans.course) < 2.5)
 	{
 		if (velocity_need.z > max_z_speed)
 			velocity_need = velocity_need * (max_z_speed / velocity_need.z);
@@ -444,66 +440,6 @@ NavigationNode::calculateControl(GeoMath::v3 offset, GeoMath::v3 current_velocit
 	
 	return ans ;
 }
-
-//void
-//NavigationNode::calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath::v3 current_velocity, uint8_t ctrl_mode)
-//{
-//	ctrl_flag = 5;
-//	const double max_break_acc = 5;
-//	const double max_force_acc = 0.7;
-//	double need_abs_speed;
-//	
-//	double max_z_speed = 5;
-//	double current_speed = current_velocity.length_xyz();
-//	
-//	need_abs_speed = std::min(abs_speed, current_speed + max_force_acc);
-//	double addition_break_time = 0.1;
-//	double current_distance = offset.length_xyz();
-//	
-//	double break_distance = 0;
-//	
-//	switch (ctrl_mode)
-//	{
-//	case juk_msg::juk_set_target_data_msg::mode_allow_break_distance :
-//		
-//		break_distance = ((abs_speed*abs_speed) / (2*max_break_acc));
-//		
-//		if (current_distance < break_distance + addition_break_time*need_abs_speed + 1.5)
-//		{
-//			ctrl_flag = 7;
-//		}
-//		break ;
-//	}
-//	
-//	GeoMath::v2 cC(cos(position_data.course*GeoMath::CONST.DEG2RAD), sin(position_data.course*GeoMath::CONST.DEG2RAD));
-//	GeoMath::v2 cN(cos(target.course*GeoMath::CONST.DEG2RAD), sin(target.course*GeoMath::CONST.DEG2RAD));
-//
-//	yaw_rate = -cC.angle_xy(cN)*GeoMath::CONST.RAD2DEG / 2;
-//		
-//	velocity_need = offset.normalize_xyz(need_abs_speed);
-//	//std::cout.flags(std::ios::fixed);
-//	//std::cout << offset << std::endl;
-//	if(abs(yaw_rate) < 3)
-//	{
-//		if (velocity_need.z > max_z_speed)
-//			velocity_need = velocity_need * (max_z_speed / velocity_need.z);
-//	
-//		if (ctrl_flag == 7)
-//		{
-//			velocity_need.x = offset.x;
-//			velocity_need.y = offset.y;
-//			velocity_need.z = offset.z / 2; 
-//		}
-//	}
-//	else
-//	{
-//		ctrl_flag = 5;
-//		velocity_need.x = 0;
-//		velocity_need.y = 0;
-//		velocity_need.z = 0;
-//	}
-//
-//}
 
 void NavigationNode::aruco_callback(const juk_msg::juk_aruco_module_data::ConstPtr& input)
 {
@@ -532,123 +468,118 @@ void
 NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 {
 	auto now = ros::Time::now();
-	bool allow_emlid = (params.args["enable_emlid"]&&(precision_pos_quality == 1 || precision_pos_quality == 2)) || !params.args["enable_emlid"];
 	
-	flight_status = input->flight_status;
+	a3_position = GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt); 
 	
-	if ((set_homepoint_flag&&(now - node_start_time).toNSec() > 5000000000)
-		&&allow_emlid)
+	GPS_STATE = GPS_STATES::BASIC_GPS;
+	
+	bool emlid_ok = (params.args["enable_emlid"]&&(precision_pos_quality == 1 || precision_pos_quality == 2)) || !params.args["enable_emlid"];
+	
+	if (emlid_ok && params.args["enable_emlid"]&&(now - precision_pos_uptime).nsec < 1e9)
 	{
-		target.course = input->course*GeoMath::CONST.RAD2DEG;
-		homepoint_course = input->course;
-		homepoint = GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
-		homepoint_precision = GeoMath::v3geo(precision_position.lat, precision_position.lng, input->alt);
-		target.point_abs = homepoint;
-		target_precision.point_abs = homepoint_precision;
+		correction_RTK = precision_position - a3_position;
+		correction_RTK.z = 0;
 		
-		set_homepoint_flag = false;
-		
-		STATE = STATES::IDLE;
-		SUB_STATE = SUB_STATES::BASIC_STATE;
-		
-		home_uptime = ros::Time::now();
-		//std::cout << "HOMEPOINT SET" << std::endl;
-	}
-	
-	
-	if (allow_emlid && params.args["enable_emlid"]&&(now - precision_pos_uptime).toNSec() < 1000000000)
-	{
-		//std::cout << "Emlid" << std::endl;
 		GPS_STATE = GPS_STATES::RTK;
-		current_point_abs = precision_position;
-		current_target = target_precision;
 	}
-	else
-	{
-		//std::cout << "A3" << std::endl;
-		GPS_STATE = GPS_STATES::BASIC_GPS;
-		current_point_abs = GeoMath::v3geo(input->lat*GeoMath::CONST.RAD2DEG, input->lng*GeoMath::CONST.RAD2DEG, input->alt);
-		current_target = target;
-	}	
+	
+	current_point_abs = a3_position + correction_RTK;
 	
 	current_velocity = GeoMath::v3(input->vx, input->vy, input->vz);
 	
-	current_point_home = current_point_abs - homepoint_precision;
-	
-	position_data.alt = current_point_abs.alt;
-	position_data.lat = current_point_abs.lat;
-	position_data.lng = current_point_abs.lng;
-	
-	position_data.x = current_point_home.x;
-	position_data.y = current_point_home.y;
-	position_data.z = current_point_home.z;
-
-	position_data.course = input->course*GeoMath::CONST.RAD2DEG;
-	
-	GeoMath::v3 position_offset = current_target.point_abs - current_point_abs;
-	
-	if (!set_homepoint_flag)
+	if (((now - node_start_time).toNSec() > 5e9)  && input->quality)
 	{
-		CtrlStatus ctrl;
+	
+		flight_status = input->flight_status;
+	
+		if (set_homepoint_flag && emlid_ok)
+		{
+			target.course = input->course*GeoMath::CONST.RAD2DEG;
 		
-		if (state_handlers.find(STATE) != state_handlers.end())
-			ctrl = state_handlers[STATE]();
+			homepoint_course = input->course;
+			homepoint = a3_position;
+		
+			target.point_abs = homepoint;
+		
+			set_homepoint_flag = false;
+		
+			STATE = STATES::IDLE;
+			SUB_STATE = SUB_STATES::BASIC_STATE;
+		
+			home_uptime = ros::Time::now();
+		}
+	
+		current_point_home = current_point_abs - homepoint;
+		
+		position_data.alt = current_point_abs.alt;
+		position_data.lat = current_point_abs.lat;
+		position_data.lng = current_point_abs.lng;
+	
+		position_data.x = current_point_home.x;
+		position_data.y = current_point_home.y;
+		position_data.z = current_point_home.z;
+
+		position_data.course = input->course*GeoMath::CONST.RAD2DEG;
+	
+		GeoMath::v3 position_offset = current_target.point_abs - current_point_abs;
+	
+		if (!set_homepoint_flag)
+		{
+			CtrlStatus ctrl;
+		
+			if (state_handlers.find(STATE) != state_handlers.end())
+				ctrl = state_handlers[STATE]();
+			else
+			{
+				ctrl.msg.data_x = 0;
+				ctrl.msg.data_y = 0;
+				ctrl.msg.data_z = 0;
+				ctrl.msg.flag = 5;
+				ctrl.msg.course = 0;
+			
+				ctrl.stable_now = false;
+			}
+		
+			output_dji = ctrl.msg;
+			stable_now = ctrl.stable_now;
+		}
 		else
 		{
-			ctrl.msg.data_x = 0;
-			ctrl.msg.data_y = 0;
-			ctrl.msg.data_z = 0;
-			ctrl.msg.flag = 5;
-			ctrl.msg.course = 0;
-			
-			ctrl.stable_now = false;
+			stable_now = true;
+			output_dji.data_x = 0;
+			output_dji.data_y = 0;
+			output_dji.data_z = 0;
 		}
-		
-		output_dji = ctrl.msg;
-		stable_now = ctrl.stable_now;
-	}
-	else
-	{
-		stable_now = true;
-		output_dji.data_x = 0;
-		output_dji.data_y = 0;
-		output_dji.data_z = 0;
-	}
 	
-	position_data.dist_to_target = (current_point_abs - target.point_abs).length_xyz();
+		position_data.dist_to_target = (current_point_abs - target.point_abs).length_xyz();
 	
-	GeoMath::v3 pos_from_home = (GeoMath::v3geo(position_data.lat, position_data.lng, position_data.alt) - homepoint).rotateXY(homepoint_course);
+		GeoMath::v3 pos_from_home = (GeoMath::v3geo(position_data.lat, position_data.lng, position_data.alt) - homepoint).rotateXY(homepoint_course);
 	
-	position_data.x = pos_from_home.x;
-	position_data.y = pos_from_home.y;
-	position_data.z = pos_from_home.z;
+		position_data.x = pos_from_home.x;
+		position_data.y = pos_from_home.y;
+		position_data.z = pos_from_home.z;
 	
-	if (stable_now)
-	{
-		if (!stable_last)
+		if (stable_now)
 		{
-			stable_start = ros::Time::now();
+			if (!stable_last)
+			{
+				stable_start = ros::Time::now();
+			}
+			stable_time = (ros::Time::now() - stable_start).sec;
+			position_data.stable_time = stable_time;
 		}
-		stable_time = (ros::Time::now() - stable_start).sec;
-		position_data.stable_time = stable_time;
-	}
-	else
-	{
-		stable_time = 0;
-		position_data.stable_time = 0;
-	}
-	
-	
-	
-	stable_last = stable_now;
-	
-	if ((ros::Time::now() - node_start_time).sec > 5)
-	{
+		else
+		{
+			stable_time = 0;
+			position_data.stable_time = 0;
+		}	
+		stable_last = stable_now;
+
+		position_data.debug = "Nani";
 		pub_dji_control.publish(output_dji);
 		pub_position_data.publish(position_data);
 	}
 	
-	//print_telemetry();
 }
 
 
@@ -667,39 +598,27 @@ void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg:
 {
 	STATE = (int)target->fly_mode;
 	SUB_STATE = 0;
-	//std::cout << "STATE: " << STATE << std::endl;
 	this->target.break_mode = target->break_distance_mode;
 		
 	this->target.cruising_speed = target->speed;
 	this->target.accurancy = target->acc;
-	
-	
-	this->target_precision.cruising_speed = target->speed;
-	this->target_precision.accurancy = target->acc;
-	
-	
-
-	
+		
 	switch (target->system)
 	{
 	case juk_msg::juk_set_target_data_msg::system_absolut :
 		this->target.point_abs = GeoMath::v3geo(target->data_x, target->data_y, target->data_z + homepoint.alt);
-		this->target_precision.point_abs = GeoMath::v3geo(target->data_x, target->data_y, target->data_z + homepoint.alt);
 		break ;
 		
 	case juk_msg::juk_set_target_data_msg::system_home :
 		this->target.point_abs = homepoint + GeoMath::v3(target->data_x, target->data_y, target->data_z);
-		this->target_precision.point_abs = homepoint_precision + GeoMath::v3(target->data_x, target->data_y, target->data_z);
 		break ;
 		
 	case juk_msg::juk_set_target_data_msg::system_offset_from_target :
-		this->target.point_abs = this->target.point_abs + GeoMath::v3(target->data_x, target->data_y, target->data_z);
-		this->target_precision.point_abs = this->target_precision.point_abs + GeoMath::v3(target->data_x, target->data_y, target->data_z);
+		this->target.point_abs = this->target.point_abs + GeoMath::v3(target->data_x, target->data_y, target->data_z).rotateXY(this->position_data.course*GeoMath::CONST.DEG2RAD);
 		break ;	
 		
 	case juk_msg::juk_set_target_data_msg::system_offset_from_here :
 		this->target.point_abs = GeoMath::v3geo(this->position_data.lat, this->position_data.lng, this->position_data.alt) + GeoMath::v3(target->data_x, target->data_y, target->data_z).rotateXY(this->position_data.course*GeoMath::CONST.DEG2RAD);
-		this->target_precision.point_abs = GeoMath::v3geo(this->position_data.lat, this->position_data.lng, this->position_data.alt) + GeoMath::v3(target->data_x, target->data_y, target->data_z).rotateXY(this->position_data.course*GeoMath::CONST.DEG2RAD);
 		break ;	
 	}
 	
@@ -708,7 +627,6 @@ void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg:
 	case juk_msg::juk_set_target_data_msg::course_abs:		
 		{
 			this->target.course = target->course;
-			this->target_precision.course = target->course;
 		}
 		break;
 		
@@ -732,7 +650,6 @@ void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg:
 			}
 			
 			this->target.course = course_deg;
-			this->target_precision.course = course_deg;
 		}
 		break;
 		
@@ -740,34 +657,62 @@ void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg:
 		break;
 	}
 	
-	//std::cout << "TARGET:\n" << this->target.point_abs - homepoint << std::endl;
+	this->current_target = this->target;
+	
 }
 void NavigationNode::print_telemetry(const ros::TimerEvent& event)
 {
 	auto now_time = ros::Time::now();
-	if ((now_time - last_telemetry).nsec >  1000000000.0 * 0.15)
+	if ((now_time - last_telemetry).nsec >  1000000000.0 * 0.15 && params.args["navigation_telem"] == 1)
 	{
-		CLEAR(telem_heigth - 1);
+		
+		
+		std::stringstream out;
+		out.flags(std::ios_base::fixed);
+		out.precision(2);
 				
-		std::cout << "STATE:\n\t" << state_map[STATE] << std::endl;
-		std::cout << "SUB STATE:\n\t" << sub_state_map[SUB_STATE] << std::endl;
-		std::cout << "GPS STATE:\n\t" << gps_state_map[GPS_STATE] << std::endl;
-		std::cout << "FLIGHT STATUS:\n\t" << flight_status_map[(int)flight_status] << std::endl;
-		//std::cout << "FLIGHT STATUS:\n\t" << (int)flight_status << std::endl;
-		std::cout << "POSITION:\n\t" << GeoMath::v3(position_data.x, position_data.y, position_data.z) << " c: " << position_data.course << std::endl;
-		std::cout << "TARGET:\n\t" << (this->target.point_abs - homepoint) << " c: " << this->target.course << std::endl;
-		std::cout << "STABLE TIME:\n\t" << stable_time << std::endl;
+		out << grn("STATE:\n\t") << state_map[STATE] << std::endl;
+		out << grn("SUB STATE:\n\t") << sub_state_map[SUB_STATE] << std::endl;
+		out << grn("GPS STATE:\n\t") << gps_state_map[GPS_STATE] << std::endl;
+		out << grn("FLIGHT STATUS:\n\t") << flight_status_map[(int)flight_status] << std::endl;
+		out << grn("POSITION:\n\t") << GeoMath::v3(position_data.x, position_data.y, position_data.z) << " c: " << position_data.course << std::endl;
+		out << grn("RTK CORRECTION:\n\t") << correction_RTK << std::endl;
+		out << grn("TARGET:\n\t") << (this->target.point_abs - homepoint) << " c: " << this->target.course << std::endl;
+		out.precision(8);
+		out << "\t" << "lat: " << this->target.point_abs.lat << " lat: " << this->target.point_abs.lng << " alt: " << this->target.point_abs.alt - homepoint.alt << std::endl;
+		out.precision(2);
+		out << grn("STABLE TIME:\n\t") << stable_time << std::endl;
 		
 		if ((now_time - aruco_land.uptime).sec < 3)
 		{
-			std::cout << "ARUCO POSITION:\n\t" << aruco_land.offset << std::endl;
+			out << grn("ARUCO POSITION:\n\t") << aruco_land.offset << std::endl;
 		}
 		else
 		{
-			std::cout << "ARUCO POSITION:\n\t" << "x: ~ \t y: ~ \t z: ~" << std::endl;
+			out << grn("ARUCO POSITION:\n\t") << "x: ~ \t y: ~ \t z: ~" << std::endl;
 		}
 		
 		
+		out << grn("________________________") << std::endl;
+		
+		for (auto& t : additional_telem_out)
+		{
+			out << t.first << ":\n\t" << t.second.str() << std::endl;
+		}
+		
 		last_telemetry = now_time;
+		
+		std::string telem_txt = out.str();
+		
+		telem_heigth = 0;
+		
+		for (const auto& c : telem_txt)
+		{
+			if (c == '\n')
+				telem_heigth++;
+		}
+		
+		CLEAR(telem_heigth+1);
+		std::cout << out.str() << std::endl;
 	}
 }

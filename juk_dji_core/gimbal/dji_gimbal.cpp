@@ -161,14 +161,7 @@ gimbalCameraControl(Vehicle* vehicle)
 
 	displayResult(&currentAngle);
 
-	// Take picture
-	std::cout << "Ensure SD card is present.\n";
-	std::cout << "Taking picture..\n";
-	vehicle->camera->shootPhoto();
-	std::cout << "Check DJI GO App or SD card for a new picture.\n";
 
-	std::cout << "Setting new Gimbal rotation angle to [0,-50, 0] using absolute "
-	             "control:\n";
 	gimbal = GimbalContainer(0, -500, 0, 20, 1, initialAngle);
 	doSetGimbalAngle(vehicle, &gimbal);
 
@@ -187,23 +180,9 @@ gimbalCameraControl(Vehicle* vehicle)
 
 	displayResult(&currentAngle);
 
-	// Start video: We will keep the video doing for the duration of the speed
-	// control.
-	std::cout << "Ensure SD card is present.\n";
-	std::cout << "Starting video..\n";
-	vehicle->camera->videoStart();
-
-	// Speed control
-
-	std::cout << "Gimbal Speed Description: \n\n"
-	          << "Roll - unit 0.1 degrees/second input rate [-1800, 1800]\n"
-	          << "Pitch - unit 0.1 degrees/second input rate [-1800, 1800]\n"
-	          << "Yaw - unit 0.1 degrees/second input rate [-1800, 1800]\n\n";
-
-	std::cout << "Setting Roll rate to 10, Pitch rate to 5, Yaw Rate to -20.\n";
-	gimbalSpeed.roll  = 100;
-	gimbalSpeed.pitch = 50;
-	gimbalSpeed.yaw   = -200;
+	gimbalSpeed.roll  = 00;
+	gimbalSpeed.pitch = 0;
+	gimbalSpeed.yaw   = -00;
 	gimbalSpeed.gimbal_control_authority = 1;
 	gimbalSpeed.disable_fov_zoom = 0;
 	gimbalSpeed.ignore_user_stick = 0;
@@ -255,11 +234,6 @@ gimbalCameraControl(Vehicle* vehicle)
 	}
 
 	displayResult(&currentAngle);
-
-	// Stop the video
-	std::cout << "Stopping video...\n";
-	vehicle->camera->videoStop();
-	std::cout << "Check DJI GO App or SD card for a new video.\n";
 
 	// Cleanup and exit gimbal sample
 	if(!vehicle->isM100() && !vehicle->isLegacyM600())

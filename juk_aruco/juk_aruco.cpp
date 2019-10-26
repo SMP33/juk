@@ -79,9 +79,17 @@ struct mrk_params
 	mrk_params()
 	{
 	}
+	
 	mrk_params(int size_, GeoMath::v3 abs_pos_) :
 		size(size_),
 		abs_pos(abs_pos_)
+	{
+	}
+	
+	mrk_params(int size_, GeoMath::v3 abs_pos_,int max_quality_)
+		: size(size_)
+		, abs_pos(abs_pos_)
+		, max_quality(max_quality_)
 	{
 	}
 	
@@ -92,7 +100,7 @@ struct mrk_params
 	
 	double course=0;
 	int qulity=0;
-	int max_qulity=5;
+	int max_quality=5;
 };
 
 Vec3d rotationMatrixToEulerAngles(Mat &R)
@@ -177,11 +185,12 @@ public:
 		data_pub = nh_.advertise<juk_msg::juk_aruco_module_data>("JUK/ARUCO/DATA", 1);
 		image_pub_img = it_.advertise("JUK/ARUCO/IMG", 1);
 		
-		camera_matrix_ = (cv::Mat1f(3, 3) <<  289.8053695514, 0.0000000000, 307.6909635602,
-  0.0000000000, 288.7444964497, 255.6323596501,
-  0.0000000000, 0.0000000000, 1.0000000000);
+		camera_matrix_ = (cv::Mat1f(3, 3) << 
+305.3469452976, 0.0000000000, 309.8420253988,
+  0.0000000000, 305.8877199607, 244.1667919667,
+  0.0000000000, 0.0000000000, 1.0000000000 );
 	
-		dist_coeffs_ = (cv::Mat1f(5, 1) << -0.2184295845, 0.0359746937, -0.0007065258, -0.0014644036, -0.0021148780);
+		dist_coeffs_ = (cv::Mat1f(5, 1) << -0.2606891432, 0.0561859421, -0.0003313691, -0.0009746269, -0.0047886394);
 		
 		image_sub_ = it_.subscribe("/main_camera/image_raw/throttled",
 			1,
@@ -195,13 +204,33 @@ public:
 		
 		//mp.size = 540;
 		
-		markers[172] = mrk_params(540, GeoMath::v3(0, 0, 0));
-		markers[18] = mrk_params(99, GeoMath::v3(0, 0, 0));
-		markers[19] = mrk_params(99, GeoMath::v3(-10, 19, 0));
-		markers[123] = mrk_params(99, GeoMath::v3(13.5, -13.5, 0));
-		markers[97] = mrk_params(99, GeoMath::v3(18, 20, 0));
+//		markers[172] = mrk_params(540, GeoMath::v3(0, 0, 0));
+//		markers[18] = mrk_params(99, GeoMath::v3(0, 0, 0));
+//		markers[19] = mrk_params(60, GeoMath::v3(-10, 19, 0));
+//		markers[76] = mrk_params(60, GeoMath::v3(-18, -9, 0));
+//		markers[123] = mrk_params(99, GeoMath::v3(13.5, -13.5, 0));
+//		markers[97] = mrk_params(99, GeoMath::v3(18, 20, 0));
 		
-		markers[0] = mrk_params(50, GeoMath::v3(0, 0, 0));
+		markers[269] = mrk_params(900, GeoMath::v3(0, 0, 0),2);
+		
+		markers[0] = mrk_params(100, GeoMath::v3(0, 0, 0));
+		
+		markers[1] = mrk_params(100, GeoMath::v3(-30, -30, 0));
+		markers[2] = mrk_params(100, GeoMath::v3(30, -30, 0));
+		markers[3] = mrk_params(100, GeoMath::v3(30, 30, 0));
+		markers[4] = mrk_params(100, GeoMath::v3(-30, 30, 0));
+		
+		markers[11] = mrk_params(50, GeoMath::v3(-15, -15, 0)); 
+		markers[12] = mrk_params(50, GeoMath::v3(15, -15, 0));
+		markers[13] = mrk_params(50, GeoMath::v3(15, 15, 0));
+		markers[14] = mrk_params(50, GeoMath::v3(-15, 15, 0));
+		
+		markers[101] = mrk_params(60, GeoMath::v3(0, -22, 0));
+		markers[102] = mrk_params(60, GeoMath::v3(22, 0, 0));
+		markers[103] = mrk_params(60, GeoMath::v3(0, 22, 0));
+		markers[104] = mrk_params(60, GeoMath::v3(-22, 0, 0));
+		
+		//markers[0] = mrk_params(50, GeoMath::v3(0, 0, 0));
 		
 		
 		
@@ -324,16 +353,16 @@ public:
 #endif // ROTATE_
 			Scalar color = Scalar(0, 0, 255);
 						
-			if ((mp.pos_now - mp.pos_last).length_xyz() < 200 )
+			if ((mp.pos_now - mp.pos_last).length_xyz() < 400 )
 			{
 				mp.qulity++;
 				
-				if (mp.qulity >= mp.max_qulity)
+				if (mp.qulity >= mp.max_quality)
 				{
 					color = Scalar(0, 255, 0);
-					mp.qulity = mp.max_qulity;
+					mp.qulity = mp.max_quality;
 					
-					if (arcLength(markerCorners[i], true) < 200)
+					if (arcLength(markerCorners[i], true) < 600)
 						{
 							color = Scalar(0, 255, 255);
 							Vec3d pos_simple(tvec);
@@ -387,17 +416,9 @@ public:
 			data_msg.x = -pos.y;
 			data_msg.y = -pos.x;
 			
-			Mat prediction = KF.predict();
-			Point predictPt(prediction.at<float>(0), prediction.at<float>(1));
-			
-			measurement(0) = data_msg.x;
-			measurement(1) = data_msg.y;
-			
-			Mat estimated = KF.correct(measurement);
 //			data_msg.x = estimated.at<float>(0);
 //			data_msg.y = estimated.at<float>(1);
 		
-				
 			data_msg.z =  pos.z;
 			data_msg.course = course;
 			data_pub.publish(data_msg);

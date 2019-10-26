@@ -56,7 +56,10 @@ juk_msg::juk_dji_device_status_msg msg_device_status;
 ros::Time last_ctrl_update_time;  //время последнего переключения источника управления
 
 int ctrl_flag = juk_msg::juk_control_dji_msg::flag_break;  //режим управления
-RotationAngle iAngle, nAngle, cAngle; //углы подвеса при инициализации, требуемые, текущие в формате DJI SDK
+#ifndef NO_GIMBAL
+				 RotationAngle iAngle, nAngle, cAngle;   //углы подвеса при инициализации, требуемые, текущие в формате DJI SDK
+ 
+#endif // !NO_GIMBAL
 
 common_things::Time t;
 
@@ -131,9 +134,12 @@ void gimbal_camera_callback(const juk_msg::juk_dji_camera_control_msg::ConstPtr&
 		}
 	}
 	
+#ifndef NO_GIMBAL
 	nAngle.yaw = msg->yaw;
 	nAngle.pitch = msg->pitch;
-	nAngle.roll = msg->roll;
+	nAngle.roll = msg->roll; 
+#endif // !NO_GIMBAL
+
 
 	
 	
@@ -258,13 +264,18 @@ void update_data() //обновление телеметрии с A3
 			
 			
 			
-			Telemetry::Gimbal  gibmal;
-#ifndef NO_GIMBAL
 			
-			gibmal = v->broadcast->getGimbal();  //информация о подвесе а дыннй момент
-			cAngle.roll  = gibmal.roll * 10 - iAngle.roll;
-			cAngle.pitch = gibmal.pitch * 10 - iAngle.pitch;
-			cAngle.yaw   = gibmal.yaw * 10;
+#ifndef NO_GIMBAL
+			Telemetry::Gimbal  gimbal;
+			
+			gimbal = v->broadcast->getGimbal();  //информация о подвесе а дыннй момент
+			
+			
+			
+			cAngle.roll  = gimbal.roll * 10 - iAngle.roll;
+			cAngle.pitch = gimbal.pitch * 10;
+			
+			cAngle.yaw   = gimbal.yaw * 10;
 		
 			DJI::OSDK::Gimbal::SpeedData gimbalSpeed;  //скорость, которую необходимо задать подвесу
 		
@@ -276,10 +287,11 @@ void update_data() //обновление телеметрии с A3
 			
 			gimbalSpeed.gimbal_control_authority = 1;
 			gimbalSpeed.disable_fov_zoom = 0;
-			gimbalSpeed.ignore_user_stick = 0;
+			gimbalSpeed.ignore_user_stick = 1;
 			gimbalSpeed.extend_control_range = 0;
 			gimbalSpeed.ignore_aircraft_motion = 0;
 			gimbalSpeed.yaw_return_neutral = 0;
+			
 			gimbalSpeed.reserved0 = 0;
 			gimbalSpeed.reserved1 = 0;
 		
@@ -326,9 +338,10 @@ int main(int argc, char *argv[])
 	DJI::OSDK::Log::instance().disableDebugLogging();
 	
 	DJI::OSDK::Log::instance().disableStatusLogging();
-	DJI::OSDK::Log::instance().disableErrorLogging();
+	DJI::OSDK::Log::instance().enableErrorLogging();
+	//DJI::OSDK::Log::instance().disableErrorLogging();
 	
-	params.args["enable_camera_gimbal"] = 1;
+	params.args["enable_camera_gimbal"] = 0;
 	
 	params.parse(argc, argv);
 	std::cout << c(32, "@Parameters JUK_DJI_CORE_NODE: ") << std::endl;
@@ -403,22 +416,39 @@ int main(int argc, char *argv[])
 	//==========Основной цикл==========//
 	ros::Rate r(freq);
 	
-	auto gibmal = v->broadcast->getGimbal();
+	auto gimbal = v->broadcast->getGimbal();
+		
+	iAngle.roll  = gimbal.roll * 10;
+	iAngle.pitch = gimbal.pitch * 10;
+	iAngle.yaw   = gimbal.yaw * 10;
 	
-	iAngle.roll  = gibmal.roll * 10;
-	iAngle.pitch = gibmal.pitch * 10;
-	iAngle.yaw   = gibmal.yaw * 10;
-	
+#ifndef NO_GIMBAL
 	nAngle.yaw = 0;
 	nAngle.pitch = 0;
-	nAngle.roll = 0;
+	nAngle.roll = 0; 
+#endif // !NO_GIMBAL
+
 	
-	usleep(1000000);
-	DJI::OSDK::Log::instance().enableErrorLogging();
+	DJI::OSDK::Gimbal::AngleData gimbalAngle;
+	gimbalAngle.roll     = 0;
+	gimbalAngle.pitch    = 0;
+	gimbalAngle.yaw      = 0;
+	gimbalAngle.duration = 20;
+	gimbalAngle.mode |= 0;
+	gimbalAngle.mode |= 0;
+	gimbalAngle.mode |= 0 << 1;
+	gimbalAngle.mode |= 0 << 2;
+	gimbalAngle.mode |= 0 << 3;
+
+	v->gimbal->setAngle(&gimbalAngle);
+	
+	usleep(3e6);
+	
 	
 	while (ros::ok())
 	{
 		update_data();
+		msg_GPS.deb = "A3";
 		pub_GPS.publish(msg_GPS);
 		pub_device_status.publish(msg_device_status);
 		ros::spinOnce();

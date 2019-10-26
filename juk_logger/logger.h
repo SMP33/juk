@@ -10,75 +10,98 @@
 #include <pthread.h>
 
 
-template<typename T>
-	class SimpleSub
+std::vector<std::string> split(const std::string& str, const std::string& delim)
+{
+	std::vector<std::string> tokens;
+	size_t prev = 0, pos = 0;
+	do
 	{
-	public:
-		SimpleSub(ros::NodeHandle* nh, std::string topic_name_, ros::Time start_time_)
-			:
-			topic_name(topic_name_),
-			start_time(start_time_),
-			upd(false)
-		{
-			sub = nh->subscribe(topic_name, 1, &SimpleSub::callback, this);
-			last_upd_time = ros::Time::now();
-		}
-		
+		pos = str.find(delim, prev);
+		if (pos == std::string::npos) pos = str.length();
+		std::string token = str.substr(prev, pos - prev);
+		if (!token.empty()) tokens.push_back(token);
+		prev = pos + delim.length();
+	} while (pos < str.length() && prev < str.length());
+	return tokens;
+}
+
+template<class T>
+	
+	class Log_msg
+	{
+	private:
 		std::string topic_name;
-		T data;
+		T msg;
 		
 		ros::Time last_upd_time;
 		ros::Time start_time;
-		bool upd;
-		void clean_upd()
-		{
-			upd = false;
-		}
-		
 		ros::Subscriber sub;
 		
-		std::stringstream full_str;
-		
-		std::string get_full_str()
-		{
-			return full_str.str()+"}";
-		}
-		void reset_str()
-		{
-			full_str.str("");
-			full_str.clear();
-			
-			full_str.flags(std::ios::fixed);
-			full_str.precision(10);
-			full_str << "\"" << topic_name << "\":{" << std::endl;
-			//std::cout << full_str.str() << std::endl;
-			full_str << "\t\"upd\": \"" << (upd ? "YES" : "NO") << "\"," << std::endl; 
-			//std::cout << full_str.str() << std::endl;
-			full_str << "\t\"last_upd\":" << (last_upd_time - start_time) << "," << std::endl;
-			//std::cout << full_str.str() << std::endl;
-			full_str << std::endl;
-			//std::cout << full_str.str() << std::endl;
-			
-		}
-		template<typename V>
-			void add_str(std::string txt, V value,bool vrg)
-			{
-				full_str << "\t\"" << txt << "\":" << value;
-				if(vrg)
-				full_str << ",";
-				
-				full_str << std::endl;
-				
-			}
+		bool upd;
+		bool first_upd;
 		
 		void callback(const typename T::ConstPtr& inp)
 		{
-			data = *inp;
+			msg = *inp;
 			last_upd_time = ros::Time::now();
 			upd = true;
+			first_upd = true;
 		}
+		
+	public:
+		Log_msg(ros::NodeHandle* nh, std::string topic_name_, ros::Time start_time_)
+			: topic_name(topic_name_)
+			, start_time(start_time_)
+			, upd(false)
+			, first_upd(false)
+		{
+			sub = nh->subscribe(topic_name, 1, &Log_msg::callback, this);
+		}
+		
+		std::string log()
+		{
+			std::stringstream buf;
+			
+			buf.precision(12);
+			
+			buf << "last_upd_time: " << (first_upd ? (last_upd_time - start_time) : ros::Duration(-1.0)) << std::endl;
+			buf << "upd: " << (upd ? "True" : "False") << std::endl;
+			buf << msg;
+			
+			upd = false;
+			
+			return buf.str();
+		}
+		
+		std::string json()
+		{
+			std::string txt = log();
+			
+			auto lines = split(txt, "\n");
+			
+			std::stringstream buf;
+			
+			buf << "\t\"" << topic_name << "\":{\n";
+			
+			buf.precision(12);
+			
+			
+			for (int i = 0; i < lines.size()-1; i++)
+			{
+				auto& line = lines[i];
+				int dd = line.find(":");
+				buf << "\t\t\"" << line.substr(0, dd + 1) << "\": " << "\"" << line.substr(dd + 2, line.length() - 1) << "\"" << ",\n";
+			}
+			
+			auto& line = lines[lines.size() - 1];
+			int dd = line.find(":");
+			buf << "\t\t\"" << line.substr(0, dd + 1) << "\": " << "\"" << line.substr(dd + 2, line.length() - 1) << "\"" << "\n";
+			
+			buf << "}";
+			return buf.str();
+		}
+		
 	};
-
 
 
 

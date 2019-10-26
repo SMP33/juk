@@ -12,5 +12,5 @@ include_directories(${roscpp_INCLUDE_DIRS})
 find_package(juk_msg REQUIRED)
 include_directories( ${juk_msg_INCLUDE_DIRS})
 
-add_executable(juk_logger juk_logger.cpp)
+add_executable(juk_logger juk_logger.cpp logger.h)
 target_link_libraries(juk_logger ${roscpp_LIBRARIES} "${LIBRARIES_FROM_REFERENCES}")

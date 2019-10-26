@@ -20,7 +20,7 @@ include_directories(${GeoMath_INCLUDE_DIRS})
 
 FILE(GLOB SOURCE_CPP ../include/*.cpp  common/*.cpp gimbal/*.cpp *.cpp)
 
-add_executable(juk_dji_core ${SOURCE_CPP})
+add_executable(juk_dji_core ${SOURCE_CPP} gimbal/dji_gimbal.h)
 
 find_package(juk_msg REQUIRED)
 include_directories( ${juk_msg_INCLUDE_DIRS})

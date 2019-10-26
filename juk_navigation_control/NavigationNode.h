@@ -25,6 +25,7 @@
 
 
 #define c(color,str)  "\x1B["<<color<<"m" << str << "\033[0m" 
+#define grn(str)  "\x1B[32;1m" << str << "\033[0m" 
 
 
 
@@ -148,7 +149,6 @@ private:
 	};
 	
 	Target target;    ///< ÷ель(координаты по ј3)
-	Target target_precision;     ///< ÷ель(координаты по ≈млидке)
 	Target current_target;    ///< ÷ель (принимает значени€ либо target, либо target_precision )
 	Target sub_target;    ///< ѕодцель
 	
@@ -179,9 +179,10 @@ private:
 	ros::Subscriber sub_action_process;
 	ros::Subscriber sub_aruco_data;
 	
+	GeoMath::v3 correction_RTK;
+	
 	uint8_t ctrl_mode; 	 ///< текущий режим торможени€
 	
-	//FIXME calvVel- ctrl_flag
 	uint8_t ctrl_flag;   ///< режим управлени€ ј3 (устарело)
 	
 	
@@ -189,19 +190,20 @@ private:
 	juk_msg::juk_control_dji_msg output_dji;  ///< параметры управлени€, передаваемые на ј3
 	
 	GeoMath::v3geo precision_position;  ///< текущие координаты (прецизионные)
+	GeoMath::v3geo a3_position;  ///< текущие координаты (прецизионные)
 	ros::Time precision_pos_uptime;   ///< врем€ последнего обновлени€ прецизионных координат
 	
 	int  precision_pos_quality;  ///< уровень точности при определении прецизионных координат
-	
-	//FIXME calcVel - calcVel
-//	void calculateVelocity(double abs_speed, GeoMath::v3 offset, GeoMath::v3 current_velocity, uint8_t ctrl_mode);
 	
 	std::map<int, std::function<CtrlStatus()>> state_handlers;    ///< ключ - состо€ние, значение - функци€-обработчик дл€ данного состо€ни€
 	
 	void init_handlers();
 	
 	void print_telemetry(const ros::TimerEvent& event);
-	const int telem_heigth = 16;
+	int telem_heigth = 19;
+	
+	std::map<const char*, std::stringstream> additional_telem_out;
+	
 	ros::Time last_telemetry;
 	ros::Timer timer_telemetry;
 	
