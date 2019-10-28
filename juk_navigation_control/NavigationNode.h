@@ -29,6 +29,7 @@
 
 
 
+
 class NavigationNode
 {
 public:
@@ -200,7 +201,6 @@ private:
 	void init_handlers();
 	
 	void print_telemetry(const ros::TimerEvent& event);
-	int telem_heigth = 19;
 	
 	std::map<const char*, std::stringstream> additional_telem_out;
 	

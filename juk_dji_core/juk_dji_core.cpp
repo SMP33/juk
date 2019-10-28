@@ -108,12 +108,7 @@ void ctrl_callback(const juk_msg::juk_control_dji_msg::ConstPtr& msg) //обра
 
 void gimbal_camera_callback(const juk_msg::juk_dji_camera_control_msg::ConstPtr& msg)// обратный вызов для указания положения подвеса и управления камерой
 {
-	DJI::OSDK::Gimbal::AngleData angleData;
-	angleData.mode = 1;
-	angleData.yaw = msg->yaw;
-	angleData.pitch = msg->pitch;
-	angleData.roll = msg->roll;
-	angleData.duration = 3;
+
 	
 
 	if (params.args["enable_camera_gimbal"] != 0)
@@ -123,7 +118,7 @@ void gimbal_camera_callback(const juk_msg::juk_dji_camera_control_msg::ConstPtr&
 		{
 		case juk_msg::juk_dji_camera_control_msg::take_photo:
 			v->camera->shootPhoto();
-			cout << "Shoot Photo" << endl;
+			//cout << "Shoot Photo" << endl;
 			break;
 		case juk_msg::juk_dji_camera_control_msg::start_video:
 			v->camera->videoStart();
@@ -341,7 +336,7 @@ int main(int argc, char *argv[])
 	DJI::OSDK::Log::instance().enableErrorLogging();
 	//DJI::OSDK::Log::instance().disableErrorLogging();
 	
-	params.args["enable_camera_gimbal"] = 0;
+	params.args["enable_camera_gimbal"] = 1;
 	
 	params.parse(argc, argv);
 	std::cout << c(32, "@Parameters JUK_DJI_CORE_NODE: ") << std::endl;

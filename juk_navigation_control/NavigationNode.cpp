@@ -312,7 +312,9 @@ NavigationNode::NavigationNode(int argc, char** argv)
 	//	params.args["aruco_marker_id"] = 10;
 	//	params.args["aruco_marker_size"] = 180;
 	
-		usleep(5000000);
+	usleep(5000000);
+	
+	correction_RTK = GeoMath::v3(0.01, 0.01, 0.01);
 	
 	params.parse(argc, argv);
 	std::cout << c(32, "@Parameters JUK_NAVIGATION_NODE: ") << std::endl;
@@ -360,7 +362,7 @@ NavigationNode::NavigationNode(int argc, char** argv)
 	this->timer_telemetry = nh.createTimer(ros::Duration(0.2), &NavigationNode::print_telemetry, this);
 	
 	
-	for (int i = 0; i < telem_heigth + 3; i++)
+	for (int i = 0; i < 30; i++)
 	{
 		std::cout << std::endl;
 	}
@@ -475,7 +477,7 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 	
 	bool emlid_ok = (params.args["enable_emlid"]&&(precision_pos_quality == 1 || precision_pos_quality == 2)) || !params.args["enable_emlid"];
 	
-	if (emlid_ok && params.args["enable_emlid"]&&(now - precision_pos_uptime).nsec < 1e9)
+	if (emlid_ok && (now - precision_pos_uptime).toNSec() < 1e9)
 	{
 		correction_RTK = precision_position - a3_position;
 		correction_RTK.z = 0;
@@ -492,12 +494,12 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 	
 		flight_status = input->flight_status;
 	
-		if (set_homepoint_flag && emlid_ok)
+		if (set_homepoint_flag)
 		{
 			target.course = input->course*GeoMath::CONST.RAD2DEG;
 		
 			homepoint_course = input->course;
-			homepoint = a3_position;
+			homepoint = current_point_abs;
 		
 			target.point_abs = homepoint;
 		
@@ -693,7 +695,7 @@ void NavigationNode::print_telemetry(const ros::TimerEvent& event)
 		}
 		
 		
-		out << grn("________________________") << std::endl;
+		out << grn("_____________________________") << std::endl;
 		
 		for (auto& t : additional_telem_out)
 		{
@@ -704,7 +706,7 @@ void NavigationNode::print_telemetry(const ros::TimerEvent& event)
 		
 		std::string telem_txt = out.str();
 		
-		telem_heigth = 0;
+		int telem_heigth = 0;
 		
 		for (const auto& c : telem_txt)
 		{
@@ -712,7 +714,7 @@ void NavigationNode::print_telemetry(const ros::TimerEvent& event)
 				telem_heigth++;
 		}
 		
-		CLEAR(telem_heigth+1);
+		CLEAR(telem_heigth + 1);
 		std::cout << out.str() << std::endl;
 	}
 }
