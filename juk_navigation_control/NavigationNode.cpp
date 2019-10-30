@@ -1,8 +1,6 @@
 
 #include "NavigationNode.h"
 
-#define CLEAR(rows)               printf("\033[%02dA\033[0J",rows+1)
-
 void 
 NavigationNode::init_handlers()
 {
@@ -339,10 +337,10 @@ NavigationNode::NavigationNode(int argc, char** argv)
 	precision_pos_quality = 6;
 	ctrl_mode = juk_msg::juk_set_target_data_msg::mode_allow_break_distance;
 
-	sub_aruco_data = nh.subscribe("JUK/ARUCO/DATA", 1, &NavigationNode::aruco_callback, this);
+	sub_aruco_data = nh.subscribe("JUK/ARUCO/DATA", 2, &NavigationNode::aruco_callback, this);
 	sub_dji_gps = nh.subscribe("JUK/DJI/GPS", 1, &NavigationNode::gps_callback, this);
 	sub_set_target = nh.subscribe("JUK/TARGET", 1, &NavigationNode::set_target_callback, this);
-	sub_action_process = nh.subscribe("JUK/NAVIGATION_ACTIONS", 1, &NavigationNode::action_process_callback, this);
+	sub_action_process = nh.subscribe("JUK/NAVIGATION_ACTIONS", 10, &NavigationNode::action_process_callback, this);
 	if (params.args["enable_emlid"] == 1)
 	{
 		sub_precision_gps = nh.subscribe("REACH_EMLID_DATA", 1, &NavigationNode::precision_gps_callback, this);
@@ -458,9 +456,24 @@ NavigationNode::action_process_callback(const juk_msg::juk_navigation_actions_ms
 	switch (action)
 	{
 		
-	case ACTIONS::SET_HOMEPOINT :
+	case juk_msg::juk_navigation_actions_msg::set_homepoint :
 		set_homepoint_flag = true;
 		break ;
+	
+	case juk_msg::juk_navigation_actions_msg::pause :
+		
+		pause_target.accurancy = 0;
+		pause_target.point_abs = current_point_abs;
+		pause_target.cruising_speed = 1;
+		pause_target.break_mode = 0;
+		
+		paused = true;
+		break;
+
+	case juk_msg::juk_navigation_actions_msg::unpause :
+		paused = false;
+		break;
+		
 	default :
 		break ;
 	}
@@ -542,6 +555,19 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 				ctrl.stable_now = false;
 			}
 		
+			if (paused)
+			{
+				
+				ctrl.msg = calculateControl(pause_target.point_abs-current_point_abs,
+					current_velocity,
+					0,
+					0,
+					1,
+					0);
+				ctrl.stable_now = false;
+				
+			}
+			
 			output_dji = ctrl.msg;
 			stable_now = ctrl.stable_now;
 		}
@@ -575,8 +601,10 @@ NavigationNode::gps_callback(const juk_msg::juk_dji_gps_msg::ConstPtr& input)
 			stable_time = 0;
 			position_data.stable_time = 0;
 		}	
+		
+		position_data.paused = paused;
+		
 		stable_last = stable_now;
-
 		position_data.debug = "Nani";
 		pub_dji_control.publish(output_dji);
 		pub_position_data.publish(position_data);
@@ -664,8 +692,8 @@ void NavigationNode::set_target_callback(const juk_msg::juk_set_target_data_msg:
 }
 void NavigationNode::print_telemetry(const ros::TimerEvent& event)
 {
-	auto now_time = ros::Time::now();
-	if ((now_time - last_telemetry).nsec >  1000000000.0 * 0.15 && params.args["navigation_telem"] == 1)
+	auto now = ros::Time::now();
+	if ((now - last_telemetry).nsec >  1000000000.0 * 0.15 && params.args["navigation_telem"] == 1)
 	{
 		
 		
@@ -685,7 +713,7 @@ void NavigationNode::print_telemetry(const ros::TimerEvent& event)
 		out.precision(2);
 		out << grn("STABLE TIME:\n\t") << stable_time << std::endl;
 		
-		if ((now_time - aruco_land.uptime).sec < 3)
+		if ((now - aruco_land.uptime).sec < 3)
 		{
 			out << grn("ARUCO POSITION:\n\t") << aruco_land.offset << std::endl;
 		}
@@ -697,12 +725,24 @@ void NavigationNode::print_telemetry(const ros::TimerEvent& event)
 		
 		out << grn("_____________________________") << std::endl;
 		
+		if ((now-home_uptime).toNSec()<6e9)
+		{
+			out << std::endl;
+			out << green_b("~~~~~~~~~~~~~~~~\nSET HOMEPOINT  ") << green_b(int((now - home_uptime).toSec())) << green_b("\n~~~~~~~~~~~~~~~~") << std::endl;
+		}
+		
+		if (paused)
+		{
+			out << std::endl;
+			out << red_b("~~~~~~\nPAUSED\n~~~~~~") << std::endl;
+		}
+		
 		for (auto& t : additional_telem_out)
 		{
 			out << t.first << ":\n\t" << t.second.str() << std::endl;
 		}
 		
-		last_telemetry = now_time;
+		last_telemetry = now;
 		
 		std::string telem_txt = out.str();
 		

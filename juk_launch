@@ -16,6 +16,7 @@ done
 
 echo ""
 
+rosnode kill scan
 
 
 
@@ -47,6 +48,11 @@ C1="$path/juk_navigation_control $@"
 echo "Launch $C1"
 $C1 & 
 P1=$!
+
+C6="roslaunch rplidar_ros rplidar.launch" 
+echo "Launch $C1"
+$C6 & 
+P6=$!
 
 wait $P1 $P2 $P3 $P4 $P5
 

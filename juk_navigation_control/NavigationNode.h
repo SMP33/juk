@@ -24,8 +24,18 @@
 #include "ArgParser.h"
 
 
-#define c(color,str)  "\x1B["<<color<<"m" << str << "\033[0m" 
-#define grn(str)  "\x1B[32;1m" << str << "\033[0m" 
+#define c(color,str)  "\x1B["<<color<<"m" << str << "\033[0m"
+#define cyan_b(str)   "\x1B[46;1m" << str << "\033[0m" 
+#define gray_b(str)   "\x1B[40m" << str << "\033[0m" 
+#define red_b(str)   "\x1B[41;1m" << str << "\033[0m" 
+#define green_b(str)   "\x1B[42;1m" << str << "\033[0m" 
+
+
+#define grn(str)  "\x1B[32;1m" << str << "\x1B[39m" 
+#define mgt(str)  "\x1B[35;1m" << str << "\x1B[39m" 
+#define red(str)  "\x1B[31;1m" << str << "\x1B[39m" 
+
+#define CLEAR(rows)               printf("\033[%02dA\033[0J",rows+1)
 
 
 
@@ -152,6 +162,7 @@ private:
 	Target target;    ///< Цель(координаты по А3)
 	Target current_target;    ///< Цель (принимает значения либо target, либо target_precision )
 	Target sub_target;    ///< Подцель
+	Target pause_target;
 	
 	ArUcoTarget aruco_land;    ///< Маркер, на который нужно приземлиться
 	
@@ -165,8 +176,14 @@ private:
 	
 	bool stable_now;    ///< флаг, показывает, находится ли аппарат в целевой точке в данный момент
 	bool stable_last;   ///< флаг, показывает, находился ли аппарат в целевой точке на предыдущий итерации цикла
+	
+	bool paused=false;
+	
 	ros::Time stable_start;
 	ros::Time home_uptime;
+	ros::Time precision_pos_uptime;    ///< время последнего обновления прецизионных координат
+	ros::Time last_telemetry;
+	
 	double stable_time;
 	
 	ros::NodeHandle nh;
@@ -192,7 +209,7 @@ private:
 	
 	GeoMath::v3geo precision_position;  ///< текущие координаты (прецизионные)
 	GeoMath::v3geo a3_position;  ///< текущие координаты (прецизионные)
-	ros::Time precision_pos_uptime;   ///< время последнего обновления прецизионных координат
+
 	
 	int  precision_pos_quality;  ///< уровень точности при определении прецизионных координат
 	
@@ -204,7 +221,7 @@ private:
 	
 	std::map<const char*, std::stringstream> additional_telem_out;
 	
-	ros::Time last_telemetry;
+	
 	ros::Timer timer_telemetry;
 	
 	std::map<int, std::string> state_map = { { 0, "IDLE" }, { 1, "FLY_SIMPLE" }, { 2, "FLY_SAFE" }, { 3, "LAND_SIMPLE" }, { 4, "LAND_ARUCO" } };
