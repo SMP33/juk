@@ -191,7 +191,7 @@ void
 SimpleServer::set_response(std::string str)
 {
 	pthread_mutex_lock(&mutex);
-	response = str;
+	response = "HTTP/1.1 200 OK\n\n" + str;
 	pthread_mutex_unlock(&mutex);
 }
 

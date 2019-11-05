@@ -159,6 +159,12 @@ void update_data() //обновление телеметрии с A3
 	
 	//пересчет квантернионов в углы эйлера
 	Telemetry::Quaternion quat = v->broadcast->getQuaternion();         //
+	
+	if(params.args["print_quat"])
+	{
+		cout << "w: " << quat.q0 << "\tx: " << quat.q1 << "\ty: " << quat.q2 << "\tz: " << quat.q3  << endl;
+	}
+	
 	double   q2sqr = quat.q2 * quat.q2; 								   //
 	double   t0    = -2.0 * (q2sqr + quat.q3 * quat.q3) + 1.0; 		   //
 	double   t1    = + 2.0 * (quat.q1 * quat.q2 + quat.q0 * quat.q3);   //
@@ -182,6 +188,10 @@ void update_data() //обновление телеметрии с A3
 	msg_GPS.vy = data_Velocity.data.y;
 	msg_GPS.vz = data_Velocity.data.z;
 	msg_GPS.course = data_Course;
+	msg_GPS.q0 = quat.q0;
+	msg_GPS.q1 = quat.q1;
+	msg_GPS.q2 = quat.q2;
+	msg_GPS.q3 = quat.q3;
 	
 
 	
@@ -337,6 +347,7 @@ int main(int argc, char *argv[])
 	//DJI::OSDK::Log::instance().disableErrorLogging();
 	
 	params.args["enable_camera_gimbal"] = 1;
+	params.args["print_quat"] = 0;
 	
 	params.parse(argc, argv);
 	std::cout << c(32, "@Parameters JUK_DJI_CORE_NODE: ") << std::endl;
