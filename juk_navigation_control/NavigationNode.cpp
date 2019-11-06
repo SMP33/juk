@@ -211,6 +211,7 @@ NavigationNode::init_handlers()
 
 		case SUB_STATES::LANDING_ARUCO_LAND :
 			{		
+				target.point_abs = aruco_land.abs;
 				sub_target.cruising_speed = 0.7;
 					
 				double max_dist = abs(aruco_land.offset.z) / 7 + 0.1;
@@ -446,6 +447,8 @@ void NavigationNode::aruco_callback(const juk_msg::juk_aruco_module_data::ConstP
 	aruco_land.offset = GeoMath::v3(-input->x / 100, -input->y / 100, -input->z / 100);
 	aruco_land.course = position_data.course +  input->course * GeoMath::CONST.RAD2DEG;
 	aruco_land.uptime = ros::Time::now();
+	
+	aruco_land.abs = current_point_abs + GeoMath::v3(aruco_land.offset.x, -aruco_land.offset.y, 1.5 + aruco_land.offset.z).rotateXY(position_data.course*GeoMath::CONST.DEG2RAD);
 }
 
 void

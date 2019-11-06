@@ -151,6 +151,7 @@ private:
 		GeoMath::v3 offset;    ///< смещение относительно маркера
 		double course;    ///< курс
 		ros::Time uptime;    ///<время последнего обновления данных
+		GeoMath::v3geo abs;
 	};
 	
 	typedef struct CtrlStatus
